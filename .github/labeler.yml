@@ -1,0 +1,68 @@
+# labeler full schema (영문+한글 혼용)
+
+enable:
+  issues: true
+  prs: true
+
+comments:
+  issues: |
+    이 이슈를 열어주셔서 감사합니다!
+    제목과 본문에서 감지된 키워드에 따라 라벨이 자동으로 적용되었습니다.
+
+    필요하다면 라벨을 검토하고 수정해주세요.
+  prs: |
+    기여해주셔서 감사합니다!
+    제목과 본문에서 감지된 키워드에 따라 라벨이 자동으로 적용되었습니다.
+
+    필요하다면 라벨을 검토하고 수정해주세요.
+
+labels:
+  '🚨 bug':
+    include:
+      - '\bFix\b'
+      - '\bfix\b'
+      - '\bBug[s]?\b'
+      - '\bbug[s]?\b'
+      - '버그'
+      - '오류'
+
+  '🚀 feature':
+    include:
+      - '\bFeat\b'
+      - '\bFeature\b'
+      - '\bfeat\b'
+      - '\bfeature\b'
+      - '\badd(ed|ing)?\b'
+      - '기능 추가'
+      - '새로운 기능'
+
+  '♻️ refactor':
+    include:
+      - '\bRefactor(ing|ed)?\b'
+      - '\brefactor(ing|ed)?\b'
+      - '리팩터링'
+      - '코드 개선'
+
+  '🛠️ docs':
+    include:
+      - '\b(Doc|Docs|Documentation|Readme)\b'
+      - '\b(doc|docs|documentation|readme)\b'
+      - '문서'
+      - '가이드'
+
+  '⚙️ ci/cd':
+    include:
+      - '\b(Ci|Cd|Pipeline|Workflow|Deploy)\b'
+      - '\b(ci|cd|pipeline|workflow|deploy)\b'
+      - '배포'
+      - '파이프라인'
+
+  '✅ test':
+    include:
+      - '\bTest(s|ing)?\b'
+      - '\btest(s|ing)?\b'
+      - '\bunit\b'
+      - '\bintegration\b'
+      - '테스트'
+      - '단위 테스트'
+      - '통합 테스트'
