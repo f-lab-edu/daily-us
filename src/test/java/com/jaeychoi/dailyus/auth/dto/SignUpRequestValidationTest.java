@@ -1,11 +1,11 @@
 package com.jaeychoi.dailyus.auth.dto;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.jaeychoi.dailyus.common.fixture.UserFixture;
 import com.jaeychoi.dailyus.common.support.ValidationTestSupport;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class SignUpRequestValidationTest extends ValidationTestSupport {
 
