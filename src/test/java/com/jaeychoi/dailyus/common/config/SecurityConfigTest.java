@@ -15,7 +15,7 @@ class SecurityConfigTest {
 
     @Test
     void passwordEncoderHashesAndMatchesPassword() {
-        String rawPassword = "password123!";
+        String rawPassword = "Password1!";
 
         String encodedPassword = passwordEncoder.encode(rawPassword);
 
@@ -27,7 +27,7 @@ class SecurityConfigTest {
 
     @Test
     void passwordEncoderProducesDifferentHashesForSamePassword() {
-        String rawPassword = "password123!";
+        String rawPassword = "Password1!";
 
         String firstEncoded = passwordEncoder.encode(rawPassword);
         String secondEncoded = passwordEncoder.encode(rawPassword);
