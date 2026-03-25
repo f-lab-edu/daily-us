@@ -19,7 +19,7 @@ CREATE TABLE users (
     INDEX idx_users_email_deleted_at (email, deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE groups (
+CREATE TABLE user_groups (
     group_id BIGINT NOT NULL AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     intro VARCHAR(500) NULL,
