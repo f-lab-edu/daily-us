@@ -126,13 +126,13 @@ CREATE TABLE comment_likes (
         FOREIGN KEY (user_id) REFERENCES users (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE hashtage_posts (
+CREATE TABLE hashtag_posts (
     hashtag_id BIGINT NOT NULL,
     post_id BIGINT NOT NULL,
     PRIMARY KEY (hashtag_id, post_id),
     INDEX idx_hashtage_posts_post_id_hashtag_id (post_id, hashtag_id),
-    CONSTRAINT fk_hashtage_posts_hashtag_id
+    CONSTRAINT fk_hashtag_posts_hashtag_id
         FOREIGN KEY (hashtag_id) REFERENCES hashtag (hashtag_id),
-    CONSTRAINT fk_hashtage_posts_post_id
+    CONSTRAINT fk_hashtag_posts_post_id
         FOREIGN KEY (post_id) REFERENCES posts (post_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
