@@ -17,8 +17,7 @@ CREATE TABLE users (
     deleted_at DATETIME NULL,
     PRIMARY KEY (user_id),
     CONSTRAINT uk_users_email UNIQUE (email),
-    CONSTRAINT uk_users_nickname UNIQUE (nickname),
-    INDEX idx_users_email_deleted_at (email, deleted_at)
+    CONSTRAINT uk_users_nickname UNIQUE (nickname)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE user_groups (
@@ -87,8 +86,7 @@ CREATE TABLE hashtag (
     name VARCHAR(100) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (hashtag_id),
-    CONSTRAINT uk_hashtag_name UNIQUE (name),
-    INDEX idx_hashtag_name (name)
+    CONSTRAINT uk_hashtag_name UNIQUE (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE group_members (
