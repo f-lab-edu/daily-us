@@ -12,6 +12,8 @@ CREATE TABLE users (
     follower_count BIGINT NOT NULL DEFAULT 0,
     followee_count BIGINT NOT NULL DEFAULT 0,
     profile_image VARCHAR(500) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
     PRIMARY KEY (user_id),
     CONSTRAINT uk_users_email UNIQUE (email),
@@ -25,6 +27,9 @@ CREATE TABLE user_groups (
     intro VARCHAR(500) NULL,
     group_image VARCHAR(500) NULL,
     owner_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
     PRIMARY KEY (group_id),
     CONSTRAINT fk_groups_owner_id
         FOREIGN KEY (owner_id) REFERENCES users (user_id)
@@ -33,8 +38,8 @@ CREATE TABLE user_groups (
 CREATE TABLE posts (
     post_id BIGINT NOT NULL AUTO_INCREMENT,
     content TEXT NULL,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
     like_count BIGINT NOT NULL DEFAULT 0,
     user_id BIGINT NOT NULL,
@@ -47,7 +52,8 @@ CREATE TABLE posts (
 CREATE TABLE post_images (
     post_image_id BIGINT NOT NULL AUTO_INCREMENT,
     image_url VARCHAR(500) NOT NULL,
-    created_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
     post_id BIGINT NOT NULL,
     PRIMARY KEY (post_image_id),
     INDEX idx_post_images_post_id (post_id),
@@ -58,8 +64,8 @@ CREATE TABLE post_images (
 CREATE TABLE comments (
     comment_id BIGINT NOT NULL AUTO_INCREMENT,
     content TEXT NOT NULL,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
     like_count BIGINT NOT NULL DEFAULT 0,
     user_id BIGINT NOT NULL,
@@ -79,6 +85,7 @@ CREATE TABLE comments (
 CREATE TABLE hashtag (
     hashtag_id BIGINT NOT NULL AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (hashtag_id),
     CONSTRAINT uk_hashtag_name UNIQUE (name),
     INDEX idx_hashtag_name (name)
@@ -87,10 +94,11 @@ CREATE TABLE hashtag (
 CREATE TABLE group_members (
     group_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (group_id, user_id),
     INDEX idx_group_members_user_id (user_id),
     CONSTRAINT fk_group_members_group_id
-        FOREIGN KEY (group_id) REFERENCES groups (group_id),
+        FOREIGN KEY (group_id) REFERENCES user_groups (group_id),
     CONSTRAINT fk_group_members_user_id
         FOREIGN KEY (user_id) REFERENCES users (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -98,6 +106,7 @@ CREATE TABLE group_members (
 CREATE TABLE user_follow (
     follower BIGINT NOT NULL,
     followee BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (follower, followee),
     INDEX idx_user_follow_followee (followee),
     CONSTRAINT fk_user_follow_follower
@@ -109,6 +118,7 @@ CREATE TABLE user_follow (
 CREATE TABLE post_likes (
     post_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (post_id, user_id),
     CONSTRAINT fk_post_likes_post_id
         FOREIGN KEY (post_id) REFERENCES posts (post_id),
@@ -119,6 +129,7 @@ CREATE TABLE post_likes (
 CREATE TABLE comment_likes (
     comment_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (comment_id, user_id),
     CONSTRAINT fk_comment_likes_comment_id
         FOREIGN KEY (comment_id) REFERENCES comments (comment_id),
@@ -129,6 +140,7 @@ CREATE TABLE comment_likes (
 CREATE TABLE hashtag_posts (
     hashtag_id BIGINT NOT NULL,
     post_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (hashtag_id, post_id),
     INDEX idx_hashtage_posts_post_id_hashtag_id (post_id, hashtag_id),
     CONSTRAINT fk_hashtag_posts_hashtag_id
