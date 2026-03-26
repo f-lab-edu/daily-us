@@ -28,9 +28,6 @@ public class GlobalExceptionHandler {
   }
 
   private void loggingError(Exception e) {
-    log.error("message: {}", e.getMessage());
-    if (!(e instanceof BaseException)) {
-      e.printStackTrace();
-    }
+    log.error("Unhandled exception: {}", e.getMessage(), e);
   }
 }
