@@ -4,7 +4,10 @@ import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
   EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "USR_001", "Email is already in use."),
-  NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "USR_002", "Nickname is already in use.");
+  NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "USR_002", "Nickname is already in use."),
+  INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_003", "Token is invalid or expired."),
+  INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_005",
+      "Refresh token is invalid or expired.");
 
   private final HttpStatus status;
   private final String code;
@@ -27,5 +30,4 @@ public enum ErrorCode {
   public String getMessage() {
     return message;
   }
-
 }
