@@ -3,3 +3,13 @@ spring:
     active: local
   config:
     import: classpath:config/
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+jwt:
+  issuer: daily-us
+  secret: ${JWT_SECRET}
+  access-token-expiration-seconds: 3600
+  refresh-token-expiration-seconds: 1209600
