@@ -15,7 +15,7 @@ public record SignUpRequest(
     @Size(min = 9, max = 255)
     @Pattern(
         regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).+$",
-        message = "비밀번호는 대소문자, 숫자, 특수문자를 포함해야 합니다."
+        message = "Passwords must include uppercase and lowercase letters, numbers, and special characters."
     )
     String password,
 
