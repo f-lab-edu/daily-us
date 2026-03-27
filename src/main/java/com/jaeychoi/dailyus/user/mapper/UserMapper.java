@@ -10,5 +10,7 @@ public interface UserMapper {
 
     boolean existsActiveByNickname(String nickname);
 
+    User findActiveByEmail(String email);
+
     void insert(User user);
 }
