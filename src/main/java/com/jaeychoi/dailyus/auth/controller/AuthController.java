@@ -1,7 +1,10 @@
 package com.jaeychoi.dailyus.auth.controller;
 
+import com.jaeychoi.dailyus.auth.dto.SignInRequest;
 import com.jaeychoi.dailyus.auth.dto.SignUpRequest;
 import com.jaeychoi.dailyus.auth.dto.SignUpResponse;
+import com.jaeychoi.dailyus.auth.dto.TokenResponse;
+import com.jaeychoi.dailyus.auth.service.SignInService;
 import com.jaeychoi.dailyus.auth.service.SignUpService;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
 import jakarta.validation.Valid;
@@ -19,11 +22,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
   private final SignUpService signUpService;
+  private final SignInService signInService;
 
   @PostMapping("/signup")
   @ResponseStatus(HttpStatus.CREATED)
   public ApiResponse<SignUpResponse> signUp(@Valid @RequestBody SignUpRequest request) {
     SignUpResponse response = signUpService.signUp(request);
+    return ApiResponse.success(response);
+  }
+
+  @PostMapping("/signin")
+  public ApiResponse<TokenResponse> signIn(@Valid @RequestBody SignInRequest request) {
+    TokenResponse response = signInService.signIn(request);
     return ApiResponse.success(response);
   }
 }
