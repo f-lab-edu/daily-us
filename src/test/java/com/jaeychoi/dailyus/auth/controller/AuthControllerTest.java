@@ -67,7 +67,7 @@ class AuthControllerTest {
   }
 
   @Test
-  void signUpReturnsBadRequestWhenEmailAlreadyExists() throws Exception {
+  void signUpReturnsConflictWhenEmailAlreadyExists() throws Exception {
     // given
     SignUpRequest request = new SignUpRequest("tester@example.com", "Password1!", "tester");
     when(signUpService.signUp(any(SignUpRequest.class)))
@@ -78,9 +78,25 @@ class AuthControllerTest {
     mockMvc.perform(post("/api/v1/auth/signup")
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
-        .andExpect(status().isBadRequest())
+        .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value(ErrorCode.EMAIL_ALREADY_EXISTS.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.EMAIL_ALREADY_EXISTS.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void signUpReturnsBadRequestWhenRequestBodyValidationFails() throws Exception {
+    // given
+    SignUpRequest request = new SignUpRequest("invalid-email", "password", "");
+
+    // when
+    // then
+    mockMvc.perform(post("/api/v1/auth/signup")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+        .andExpect(jsonPath("$.message").isNotEmpty())
         .andExpect(jsonPath("$.data").doesNotExist());
   }
 }
