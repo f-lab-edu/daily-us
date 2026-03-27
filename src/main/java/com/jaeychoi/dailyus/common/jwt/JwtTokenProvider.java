@@ -10,6 +10,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.UUID;
 import java.util.Date;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
@@ -47,7 +48,21 @@ public class JwtTokenProvider {
   }
 
   public CurrentUser parseRefreshToken(String token) {
-    return parse(token, JwtTokenType.REFRESH, ErrorCode.INVALID_REFRESH_TOKEN);
+    return parseRefreshTokenDetails(token).user();
+  }
+
+  public RefreshTokenDetails parseRefreshTokenDetails(String token) {
+    Claims claims = parseClaims(token, JwtTokenType.REFRESH, ErrorCode.INVALID_REFRESH_TOKEN);
+    String tokenId = claims.getId();
+    if (tokenId == null || tokenId.isBlank()) {
+      throw new BaseException(ErrorCode.INVALID_REFRESH_TOKEN);
+    }
+
+    return new RefreshTokenDetails(
+        JwtUserClaims.from(claims).toCurrentUser(Long.valueOf(claims.getSubject())),
+        tokenId,
+        claims.getExpiration().toInstant()
+    );
   }
 
   private String createToken(User user, JwtTokenType tokenType, long expirationSeconds) {
@@ -60,6 +75,7 @@ public class JwtTokenProvider {
         .subject(String.valueOf(user.getUserId()))
         .claims(userClaims.toMap())
         .claim(JwtClaimNames.TOKEN_TYPE, tokenType.name())
+        .id(UUID.randomUUID().toString())
         .issuedAt(Date.from(now))
         .expiration(Date.from(expiration))
         .signWith(secretKey)
@@ -67,6 +83,11 @@ public class JwtTokenProvider {
   }
 
   private CurrentUser parse(String token, JwtTokenType expectedType, ErrorCode errorCode) {
+    Claims claims = parseClaims(token, expectedType, errorCode);
+    return JwtUserClaims.from(claims).toCurrentUser(Long.valueOf(claims.getSubject()));
+  }
+
+  private Claims parseClaims(String token, JwtTokenType expectedType, ErrorCode errorCode) {
     try {
       Claims claims = Jwts.parser()
           .verifyWith(secretKey)
@@ -80,7 +101,7 @@ public class JwtTokenProvider {
         throw new BaseException(errorCode);
       }
 
-      return JwtUserClaims.from(claims).toCurrentUser(Long.valueOf(claims.getSubject()));
+      return claims;
     } catch (JwtException | IllegalArgumentException e) {
       throw new BaseException(errorCode);
     }
