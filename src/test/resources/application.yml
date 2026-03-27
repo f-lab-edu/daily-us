@@ -7,7 +7,13 @@ spring:
   sql:
     init:
       mode: always
-      schema-locations: schema.sql
+      schema-locations: classpath:schema.sql
 
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml
+
+jwt:
+  issuer: test-daily-us
+  secret: test-secret-key-that-is-long-enough-for-hmac-256
+  access-token-expiration-seconds: 3600
+  refresh-token-expiration-seconds: 1209600
