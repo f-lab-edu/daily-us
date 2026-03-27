@@ -46,11 +46,14 @@ class JwtTokenProviderTest {
 
     String token = jwtTokenProvider.createRefreshToken(user);
     CurrentUser currentUser = jwtTokenProvider.parseRefreshToken(token);
+    RefreshTokenDetails refreshTokenDetails = jwtTokenProvider.parseRefreshTokenDetails(token);
 
     assertNotNull(token);
     assertEquals(user.getUserId(), currentUser.userId());
     assertEquals(user.getEmail(), currentUser.email());
     assertEquals(user.getNickname(), currentUser.nickname());
+    assertNotNull(refreshTokenDetails.tokenId());
+    assertEquals(user.getUserId(), refreshTokenDetails.user().userId());
   }
 
   @Test
