@@ -6,8 +6,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jaeychoi.dailyus.auth.dto.SignInRequest;
 import com.jaeychoi.dailyus.auth.dto.SignUpRequest;
 import com.jaeychoi.dailyus.auth.dto.SignUpResponse;
+import com.jaeychoi.dailyus.auth.dto.TokenResponse;
+import com.jaeychoi.dailyus.auth.service.SignInService;
 import com.jaeychoi.dailyus.auth.service.SignUpService;
 import com.jaeychoi.dailyus.common.exception.BaseException;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
@@ -30,7 +33,11 @@ class AuthControllerTest {
   @Mock
   private SignUpService signUpService;
 
+  @Mock
+  private SignInService signInService;
+
   private MockMvc mockMvc;
+
   private ObjectMapper objectMapper;
 
   @BeforeEach
@@ -38,7 +45,9 @@ class AuthControllerTest {
     LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
     validator.afterPropertiesSet();
 
-    mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(signUpService))
+    objectMapper = new ObjectMapper();
+    mockMvc = MockMvcBuilders.standaloneSetup(
+            new AuthController(signUpService, signInService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setValidator(validator)
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
@@ -98,5 +107,30 @@ class AuthControllerTest {
         .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
         .andExpect(jsonPath("$.message").isNotEmpty())
         .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void signInReturnsAccessToken() throws Exception {
+    // given
+    SignInRequest request = new SignInRequest("tester@example.com", "Password1!");
+    TokenResponse response = new TokenResponse(
+        "access-token",
+        "refresh-token",
+        3600L,
+        1209600L
+    );
+    when(signInService.signIn(any(SignInRequest.class))).thenReturn(response);
+
+    // when
+    // then
+    mockMvc.perform(post("/api/v1/auth/signin")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.accessToken").value("access-token"))
+        .andExpect(jsonPath("$.data.refreshToken").value("refresh-token"))
+        .andExpect(jsonPath("$.data.accessTokenExpiresIn").value(3600L))
+        .andExpect(jsonPath("$.data.refreshTokenExpiresIn").value(1209600L));
   }
 }
