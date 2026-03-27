@@ -11,12 +11,17 @@ import com.jaeychoi.dailyus.auth.dto.SignInRequest;
 import com.jaeychoi.dailyus.auth.dto.SignUpRequest;
 import com.jaeychoi.dailyus.auth.dto.SignUpResponse;
 import com.jaeychoi.dailyus.auth.dto.TokenResponse;
+import com.jaeychoi.dailyus.auth.domain.CurrentUser;
+import com.jaeychoi.dailyus.auth.dto.LogoutRequest;
+import com.jaeychoi.dailyus.auth.service.LogoutService;
 import com.jaeychoi.dailyus.auth.service.RefreshTokenService;
 import com.jaeychoi.dailyus.auth.service.SignInService;
 import com.jaeychoi.dailyus.auth.service.SignUpService;
 import com.jaeychoi.dailyus.common.exception.BaseException;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.common.exception.GlobalExceptionHandler;
+import com.jaeychoi.dailyus.common.web.AuthRequestAttributes;
+import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +46,9 @@ class AuthControllerTest {
   @Mock
   private RefreshTokenService refreshTokenService;
 
+  @Mock
+  private LogoutService logoutService;
+
   private MockMvc mockMvc;
 
   private ObjectMapper objectMapper;
@@ -52,8 +60,9 @@ class AuthControllerTest {
 
     objectMapper = new ObjectMapper();
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new AuthController(signUpService, signInService, refreshTokenService))
+            new AuthController(signUpService, signInService, refreshTokenService, logoutService))
         .setControllerAdvice(new GlobalExceptionHandler())
+        .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
         .build();
@@ -160,5 +169,34 @@ class AuthControllerTest {
         .andExpect(jsonPath("$.code").value("OK"))
         .andExpect(jsonPath("$.data.accessToken").value("new-access-token"))
         .andExpect(jsonPath("$.data.refreshToken").value("new-refresh-token"));
+  }
+
+  @Test
+  void logoutReturnsOk() throws Exception {
+    LogoutRequest request = new LogoutRequest("refresh-token");
+
+    mockMvc.perform(post("/api/v1/auth/logout")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "tester@example.com", "tester"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.message").doesNotExist())
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void logoutReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    LogoutRequest request = new LogoutRequest("refresh-token");
+
+    mockMvc.perform(post("/api/v1/auth/logout")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
   }
 }
