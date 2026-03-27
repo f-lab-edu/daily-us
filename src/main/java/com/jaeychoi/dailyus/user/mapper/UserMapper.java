@@ -10,6 +10,8 @@ public interface UserMapper {
 
     boolean existsActiveByNickname(String nickname);
 
+    User findActiveById(Long userId);
+
     User findActiveByEmail(String email);
 
     void insert(User user);

@@ -52,6 +52,23 @@
           AND deleted_at IS NULL
     </select>
 
+    <select id="findActiveById" parameterType="long" resultMap="userResultMap">
+        SELECT
+            user_id,
+            email,
+            password,
+            nickname,
+            follower_count,
+            followee_count,
+            profile_image,
+            created_at,
+            updated_at,
+            deleted_at
+        FROM users
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+    </select>
+
     <insert id="insert"
             parameterType="com.jaeychoi.dailyus.user.domain.User"
             useGeneratedKeys="true"
