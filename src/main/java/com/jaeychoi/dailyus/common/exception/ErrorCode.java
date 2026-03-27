@@ -3,8 +3,8 @@ package com.jaeychoi.dailyus.common.exception;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
-
-  ;
+  EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "USR_001", "Email is already in use."),
+  NICKNAME_ALREADY_EXISTS(HttpStatus.CONFLICT, "USR_002", "Nickname is already in use.");
 
   private final HttpStatus status;
   private final String code;

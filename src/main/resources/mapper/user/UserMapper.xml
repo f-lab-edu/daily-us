@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jaeychoi.dailyus.user.mapper.UserMapper">
+
+    <select id="existsActiveByEmail" parameterType="string" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM users
+            WHERE email = #{email}
+              AND deleted_at IS NULL
+        )
+    </select>
+
+    <select id="existsActiveByNickname" parameterType="string" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM users
+            WHERE nickname = #{nickname}
+              AND deleted_at IS NULL
+        )
+    </select>
+
+    <insert id="insert"
+            parameterType="com.jaeychoi.dailyus.user.domain.User"
+            useGeneratedKeys="true"
+            keyProperty="userId">
+        INSERT INTO users (
+            email,
+            password,
+            nickname,
+            follower_count,
+            followee_count,
+            profile_image,
+            deleted_at
+        ) VALUES (
+            #{email},
+            #{password},
+            #{nickname},
+            #{followerCount},
+            #{followeeCount},
+            #{profileImage},
+            #{deletedAt}
+        )
+    </insert>
+
+</mapper>
