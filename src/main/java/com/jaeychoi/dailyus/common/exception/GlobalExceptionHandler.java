@@ -4,6 +4,7 @@ import com.jaeychoi.dailyus.common.web.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -18,6 +19,14 @@ public class GlobalExceptionHandler {
     String errorCode = e.getErrorCode().getCode();
     String errorMessage = e.getMessage();
     return ResponseEntity.status(status).body(ApiResponse.error(errorCode, errorMessage));
+  }
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValidException(
+      MethodArgumentNotValidException e) {
+    loggingError(e);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(ApiResponse.error("INVALID_INPUT", "Invalid input."));
   }
 
   @ExceptionHandler(Exception.class)
