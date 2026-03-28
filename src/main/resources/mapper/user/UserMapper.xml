@@ -4,6 +4,19 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.jaeychoi.dailyus.user.mapper.UserMapper">
 
+    <resultMap id="userResultMap" type="com.jaeychoi.dailyus.user.domain.User">
+        <id property="userId" column="user_id"/>
+        <result property="email" column="email"/>
+        <result property="password" column="password"/>
+        <result property="nickname" column="nickname"/>
+        <result property="followerCount" column="follower_count"/>
+        <result property="followeeCount" column="followee_count"/>
+        <result property="profileImage" column="profile_image"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+    </resultMap>
+
     <select id="existsActiveByEmail" parameterType="string" resultType="boolean">
         SELECT EXISTS(
             SELECT 1
@@ -20,6 +33,23 @@
             WHERE nickname = #{nickname}
               AND deleted_at IS NULL
         )
+    </select>
+
+    <select id="findActiveByEmail" parameterType="string" resultMap="userResultMap">
+        SELECT
+            user_id,
+            email,
+            password,
+            nickname,
+            follower_count,
+            followee_count,
+            profile_image,
+            created_at,
+            updated_at,
+            deleted_at
+        FROM users
+        WHERE email = #{email}
+          AND deleted_at IS NULL
     </select>
 
     <insert id="insert"
