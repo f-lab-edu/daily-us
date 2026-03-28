@@ -1,0 +1,27 @@
+package com.jaeychoi.dailyus.common.config;
+
+import com.jaeychoi.dailyus.common.jwt.JwtProperties;
+import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
+import java.util.List;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+@EnableConfigurationProperties(JwtProperties.class)
+public class WebConfig implements WebMvcConfigurer {
+
+  private final AuthenticatedUserArgumentResolver authenticatedUserArgumentResolver;
+
+  public WebConfig(
+      AuthenticatedUserArgumentResolver authenticatedUserArgumentResolver
+  ) {
+    this.authenticatedUserArgumentResolver = authenticatedUserArgumentResolver;
+  }
+
+  @Override
+  public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+    resolvers.add(authenticatedUserArgumentResolver);
+  }
+}
