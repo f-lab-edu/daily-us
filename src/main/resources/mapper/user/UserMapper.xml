@@ -69,27 +69,63 @@
           AND deleted_at IS NULL
     </select>
 
+    <select id="existsActiveById" parameterType="long" resultType="boolean">
+      SELECT EXISTS(
+        SELECT 1
+        FROM users
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+      )
+    </select>
+
+    <update id="incrementFollowerCount" parameterType="long">
+      UPDATE users
+      SET follower_count = follower_count + 1
+      WHERE user_id = #{userId}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="incrementFolloweeCount" parameterType="long">
+      UPDATE users
+      SET followee_count = followee_count + 1
+      WHERE user_id = #{userId}
+        AND deleted_at IS NULL
+    </update>
+
+    <update id="decrementFollowerCount" parameterType="long">
+      UPDATE users
+      SET follower_count = follower_count - 1
+      WHERE user_id = #{userId}
+        AND deleted_at IS NULL
+        AND follower_count > 0
+    </update>
+
+    <update id="decrementFolloweeCount" parameterType="long">
+      UPDATE users
+      SET followee_count = followee_count - 1
+      WHERE user_id = #{userId}
+        AND deleted_at IS NULL
+        AND followee_count > 0
+    </update>
+
     <insert id="insert"
             parameterType="com.jaeychoi.dailyus.user.domain.User"
             useGeneratedKeys="true"
             keyProperty="userId">
-        INSERT INTO users (
-            email,
-            password,
-            nickname,
-            follower_count,
-            followee_count,
-            profile_image,
-            deleted_at
-        ) VALUES (
-            #{email},
-            #{password},
-            #{nickname},
-            #{followerCount},
-            #{followeeCount},
-            #{profileImage},
-            #{deletedAt}
-        )
+      INSERT INTO users (email,
+                         password,
+                         nickname,
+                         follower_count,
+                         followee_count,
+                         profile_image,
+                         deleted_at)
+      VALUES (#{email},
+              #{password},
+              #{nickname},
+              #{followerCount},
+              #{followeeCount},
+              #{profileImage},
+              #{deletedAt})
     </insert>
 
 </mapper>
