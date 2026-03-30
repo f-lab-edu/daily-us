@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jaeychoi.dailyus.post.mapper.PostMapper">
+
+    <insert id="insert"
+            parameterType="com.jaeychoi.dailyus.post.domain.Post"
+            useGeneratedKeys="true"
+            keyProperty="postId">
+        INSERT INTO posts (
+            content,
+            user_id
+        ) VALUES (
+            #{content},
+            #{userId}
+        )
+    </insert>
+
+    <insert id="insertImages">
+        INSERT INTO post_images (
+            image_url,
+            post_id
+        ) VALUES
+        <foreach collection="imageUrls" item="imageUrl" separator=",">
+            (
+                #{imageUrl},
+                #{postId}
+            )
+        </foreach>
+    </insert>
+
+</mapper>
