@@ -11,7 +11,11 @@ public enum ErrorCode {
   FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH_004",
       "You do not have permission to access this resource."),
   INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_005",
-      "Refresh token is invalid or expired.");
+      "Refresh token is invalid or expired."),
+  USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USR_003", "User not found."),
+  SELF_FOLLOW_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "USR_004", "You cannot follow yourself."),
+  FOLLOW_ALREADY_EXISTS(HttpStatus.CONFLICT, "USR_005", "Follow relationship already exists."),
+  FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "USR_006", "Follow relationship not found.");
 
   private final HttpStatus status;
   private final String code;
