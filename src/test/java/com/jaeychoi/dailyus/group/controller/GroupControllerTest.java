@@ -63,7 +63,8 @@ class GroupControllerTest {
         request.name(),
         request.intro(),
         request.groupImage(),
-        2L
+        2L,
+        1
     );
     when(groupCreateService.create(any(), any(GroupCreateRequest.class))).thenReturn(response);
 

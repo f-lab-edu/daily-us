@@ -9,4 +9,6 @@ public interface GroupMapper {
   void insert(Group group);
 
   void insertMember(Long groupId, Long userId);
+
+  void increaseMemberCount(Long groupId);
 }

@@ -25,13 +25,15 @@ public class GroupCreateService {
 
     groupMapper.insert(group);
     groupMapper.insertMember(group.getGroupId(), ownerId);
+    groupMapper.increaseMemberCount(group.getGroupId());
 
     return new GroupCreateResponse(
         group.getGroupId(),
         group.getName(),
         group.getIntro(),
         group.getGroupImage(),
-        group.getOwnerId()
+        group.getOwnerId(),
+        group.getMemberCount() + 1
     );
   }
 }
