@@ -5,7 +5,8 @@ public record GroupCreateResponse(
     String name,
     String intro,
     String groupImage,
-    Long ownerId
+    Long ownerId,
+    Integer memberCount
 ) {
 
 }
