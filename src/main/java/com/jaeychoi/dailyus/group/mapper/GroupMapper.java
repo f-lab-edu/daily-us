@@ -11,4 +11,10 @@ public interface GroupMapper {
   void insertMember(Long groupId, Long userId);
 
   void increaseMemberCount(Long groupId);
+
+  Group findActiveById(Long groupId);
+
+  boolean existsMemberByIdAndMemberId(Long groupId, Long userId);
+
+  int countJoinedGroupsByMemberId(Long userId);
 }
