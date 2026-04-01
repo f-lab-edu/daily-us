@@ -19,6 +19,8 @@ public class Group {
   private String intro;
   private String groupImage;
   private Long ownerId;
+  @Builder.Default
+  private Integer memberCount = 0;
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
   private LocalDateTime deletedAt;
