@@ -1,11 +1,13 @@
 package com.jaeychoi.dailyus.auth.controller;
 
+import com.jaeychoi.dailyus.auth.dto.RefreshTokenRequest;
 import com.jaeychoi.dailyus.auth.dto.SignInRequest;
 import com.jaeychoi.dailyus.auth.dto.SignUpRequest;
 import com.jaeychoi.dailyus.auth.dto.SignUpResponse;
 import com.jaeychoi.dailyus.auth.dto.TokenResponse;
 import com.jaeychoi.dailyus.auth.service.SignInService;
 import com.jaeychoi.dailyus.auth.service.SignUpService;
+import com.jaeychoi.dailyus.auth.service.RefreshTokenService;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ public class AuthController {
 
   private final SignUpService signUpService;
   private final SignInService signInService;
+  private final RefreshTokenService refreshTokenService;
 
   @PostMapping("/signup")
   @ResponseStatus(HttpStatus.CREATED)
@@ -34,6 +37,12 @@ public class AuthController {
   @PostMapping("/signin")
   public ApiResponse<TokenResponse> signIn(@Valid @RequestBody SignInRequest request) {
     TokenResponse response = signInService.signIn(request);
+    return ApiResponse.success(response);
+  }
+
+  @PostMapping("/refresh")
+  public ApiResponse<TokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+    TokenResponse response = refreshTokenService.refresh(request);
     return ApiResponse.success(response);
   }
 }

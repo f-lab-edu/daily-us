@@ -7,14 +7,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.jaeychoi.dailyus.auth.domain.CurrentUser;
 import com.jaeychoi.dailyus.auth.dto.SignInRequest;
 import com.jaeychoi.dailyus.auth.dto.TokenResponse;
+import com.jaeychoi.dailyus.auth.repository.RefreshTokenRepository;
 import com.jaeychoi.dailyus.common.exception.BaseException;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.common.jwt.JwtTokenPair;
 import com.jaeychoi.dailyus.common.jwt.JwtTokenProvider;
+import com.jaeychoi.dailyus.common.jwt.RefreshTokenDetails;
 import com.jaeychoi.dailyus.user.domain.User;
 import com.jaeychoi.dailyus.user.mapper.UserMapper;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +38,9 @@ class SignInServiceTest {
   @Mock
   private JwtTokenProvider jwtTokenProvider;
 
+  @Mock
+  private RefreshTokenRepository refreshTokenRepository;
+
   @InjectMocks
   private SignInService signInService;
 
@@ -48,10 +55,17 @@ class SignInServiceTest {
         .nickname("tester")
         .build();
     JwtTokenPair tokenPair = new JwtTokenPair("access-token", "refresh-token", 3600L, 1209600L);
+    RefreshTokenDetails refreshTokenDetails = new RefreshTokenDetails(
+        new CurrentUser(1L, request.email(), "tester"),
+        "refresh-token-id",
+        Instant.parse("2026-03-27T00:00:00Z")
+    );
 
     when(userMapper.findActiveByEmail(request.email())).thenReturn(user);
     when(passwordEncoder.matches(request.password(), user.getPassword())).thenReturn(true);
     when(jwtTokenProvider.createTokenPair(user)).thenReturn(tokenPair);
+    when(jwtTokenProvider.parseRefreshTokenDetails(tokenPair.refreshToken()))
+        .thenReturn(refreshTokenDetails);
 
     // when
     TokenResponse response = signInService.signIn(request);
@@ -61,6 +75,7 @@ class SignInServiceTest {
     assertThat(response.refreshToken()).isEqualTo(tokenPair.refreshToken());
     assertThat(response.accessTokenExpiresIn()).isEqualTo(tokenPair.accessTokenExpiresIn());
     assertThat(response.refreshTokenExpiresIn()).isEqualTo(tokenPair.refreshTokenExpiresIn());
+    verify(refreshTokenRepository).save(user.getUserId(), refreshTokenDetails);
   }
 
   @Test
@@ -78,6 +93,7 @@ class SignInServiceTest {
 
     verify(passwordEncoder, never()).matches(any(), any());
     verify(jwtTokenProvider, never()).createTokenPair(any(User.class));
+    verify(refreshTokenRepository, never()).save(any(), any());
   }
 
   @Test
@@ -102,5 +118,6 @@ class SignInServiceTest {
         .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
 
     verify(jwtTokenProvider, never()).createTokenPair(any(User.class));
+    verify(refreshTokenRepository, never()).save(any(), any());
   }
 }

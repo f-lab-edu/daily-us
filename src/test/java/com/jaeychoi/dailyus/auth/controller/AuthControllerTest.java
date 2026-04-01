@@ -6,10 +6,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jaeychoi.dailyus.auth.dto.RefreshTokenRequest;
 import com.jaeychoi.dailyus.auth.dto.SignInRequest;
 import com.jaeychoi.dailyus.auth.dto.SignUpRequest;
 import com.jaeychoi.dailyus.auth.dto.SignUpResponse;
 import com.jaeychoi.dailyus.auth.dto.TokenResponse;
+import com.jaeychoi.dailyus.auth.service.RefreshTokenService;
 import com.jaeychoi.dailyus.auth.service.SignInService;
 import com.jaeychoi.dailyus.auth.service.SignUpService;
 import com.jaeychoi.dailyus.common.exception.BaseException;
@@ -36,6 +38,9 @@ class AuthControllerTest {
   @Mock
   private SignInService signInService;
 
+  @Mock
+  private RefreshTokenService refreshTokenService;
+
   private MockMvc mockMvc;
 
   private ObjectMapper objectMapper;
@@ -47,7 +52,7 @@ class AuthControllerTest {
 
     objectMapper = new ObjectMapper();
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new AuthController(signUpService, signInService))
+            new AuthController(signUpService, signInService, refreshTokenService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setValidator(validator)
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
@@ -132,5 +137,28 @@ class AuthControllerTest {
         .andExpect(jsonPath("$.data.refreshToken").value("refresh-token"))
         .andExpect(jsonPath("$.data.accessTokenExpiresIn").value(3600L))
         .andExpect(jsonPath("$.data.refreshTokenExpiresIn").value(1209600L));
+  }
+
+  @Test
+  void refreshReturnsNewTokenPair() throws Exception {
+    // given
+    RefreshTokenRequest request = new RefreshTokenRequest("refresh-token");
+    TokenResponse response = new TokenResponse(
+        "new-access-token",
+        "new-refresh-token",
+        3600L,
+        1209600L
+    );
+    when(refreshTokenService.refresh(any(RefreshTokenRequest.class))).thenReturn(response);
+
+    // when
+    // then
+    mockMvc.perform(post("/api/v1/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.accessToken").value("new-access-token"))
+        .andExpect(jsonPath("$.data.refreshToken").value("new-refresh-token"));
   }
 }
