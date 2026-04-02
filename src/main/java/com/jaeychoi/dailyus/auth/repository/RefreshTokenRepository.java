@@ -35,6 +35,28 @@ public class RefreshTokenRepository {
       """,
       Long.class
   );
+  private static final DefaultRedisScript<Long> REVOKE_SCRIPT = new DefaultRedisScript<>(
+      """
+      local activeKey = KEYS[1]
+      local blacklistKey = KEYS[2]
+      local currentTokenId = ARGV[1]
+      local blacklistTtlMillis = tonumber(ARGV[2])
+      local activeTokenId = redis.call('GET', activeKey)
+
+      if not activeTokenId or activeTokenId ~= currentTokenId then
+        return 0
+      end
+
+      redis.call('DEL', activeKey)
+
+      if blacklistTtlMillis > 0 then
+        redis.call('SET', blacklistKey, '1', 'PX', blacklistTtlMillis)
+      end
+
+      return 1
+      """,
+      Long.class
+  );
 
   private final StringRedisTemplate redisTemplate;
 
@@ -65,6 +87,16 @@ public class RefreshTokenRepository {
   public boolean isBlacklisted(String tokenId) {
     Boolean hasKey = redisTemplate.hasKey(blacklistKey(tokenId));
     return Boolean.TRUE.equals(hasKey);
+  }
+
+  public boolean revoke(Long userId, RefreshTokenDetails refreshTokenDetails) {
+    Long updated = redisTemplate.execute(
+        REVOKE_SCRIPT,
+        List.of(activeKey(userId), blacklistKey(refreshTokenDetails.tokenId())),
+        refreshTokenDetails.tokenId(),
+        String.valueOf(ttlUntil(refreshTokenDetails.expiresAt()).toMillis())
+    );
+    return updated != null && updated == 1L;
   }
 
   private String activeKey(Long userId) {
