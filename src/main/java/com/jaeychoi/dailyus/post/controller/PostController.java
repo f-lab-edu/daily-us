@@ -1,0 +1,33 @@
+package com.jaeychoi.dailyus.post.controller;
+
+import com.jaeychoi.dailyus.auth.annotation.AuthRequired;
+import com.jaeychoi.dailyus.auth.annotation.AuthenticatedUser;
+import com.jaeychoi.dailyus.auth.domain.CurrentUser;
+import com.jaeychoi.dailyus.common.web.ApiResponse;
+import com.jaeychoi.dailyus.post.dto.PostCreateRequest;
+import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
+import com.jaeychoi.dailyus.post.service.PostCreateService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/posts")
+@RequiredArgsConstructor
+public class PostController {
+
+  private final PostCreateService postCreateService;
+
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @AuthRequired
+  public ApiResponse<PostCreateResponse> createPost(@AuthenticatedUser CurrentUser user,
+      @Valid @RequestBody PostCreateRequest request) {
+    return ApiResponse.success(postCreateService.createPost(user.userId(), request));
+  }
+}
