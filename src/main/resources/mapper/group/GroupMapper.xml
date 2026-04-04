@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jaeychoi.dailyus.group.mapper.GroupMapper">
+
+    <insert id="insert"
+            parameterType="com.jaeychoi.dailyus.group.domain.Group"
+            useGeneratedKeys="true"
+            keyProperty="groupId">
+        INSERT INTO user_groups (
+            name,
+            intro,
+            group_image,
+            owner_id,
+            deleted_at
+        ) VALUES (
+            #{name},
+            #{intro},
+            #{groupImage},
+            #{ownerId},
+            #{deletedAt}
+        )
+    </insert>
+
+    <insert id="insertMember">
+        INSERT INTO group_members (
+            group_id,
+            user_id
+        ) VALUES (
+            #{groupId},
+            #{userId}
+        )
+    </insert>
+
+  <update id="increaseMemberCount" parameterType="long">
+    UPDATE user_groups
+    SET member_count = member_count + 1
+    WHERE group_id = #{groupId}
+      AND deleted_at IS NULL
+  </update>
+
+</mapper>
