@@ -41,6 +41,25 @@ class UserMapperTest {
   }
 
   @Test
+  void existsActiveByIdReturnsTrueOnlyForActiveUsers() throws Exception {
+    // given
+    Long activeUserId = insertUser("active-id@example.com", "active-id-user", null);
+    Long deletedUserId = insertUser(
+        "deleted-id@example.com",
+        "deleted-id-user",
+        LocalDateTime.of(2026, 3, 26, 10, 0)
+    );
+
+    // when
+    boolean activeExists = userMapper.existsActiveById(activeUserId);
+    boolean deletedExists = userMapper.existsActiveById(deletedUserId);
+
+    // then
+    assertThat(activeExists).isTrue();
+    assertThat(deletedExists).isFalse();
+  }
+
+  @Test
   void insertPersistsUserAndSetsGeneratedKey() {
     // given
     User user = User.builder()
@@ -58,7 +77,7 @@ class UserMapperTest {
     assertThat(userMapper.existsActiveByNickname("new-user")).isTrue();
   }
 
-  private void insertUser(String email, String nickname, LocalDateTime deletedAt) throws Exception {
+  private Long insertUser(String email, String nickname, LocalDateTime deletedAt) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
             """
@@ -71,7 +90,8 @@ class UserMapperTest {
                     profile_image,
                     deleted_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """
+                """,
+            PreparedStatement.RETURN_GENERATED_KEYS
         )) {
       statement.setString(1, email);
       statement.setString(2, "encoded-password");
@@ -81,6 +101,11 @@ class UserMapperTest {
       statement.setString(6, null);
       statement.setTimestamp(7, deletedAt == null ? null : Timestamp.valueOf(deletedAt));
       statement.executeUpdate();
+
+      try (var generatedKeys = statement.getGeneratedKeys()) {
+        assertThat(generatedKeys.next()).isTrue();
+        return generatedKeys.getLong(1);
+      }
     }
   }
 }
