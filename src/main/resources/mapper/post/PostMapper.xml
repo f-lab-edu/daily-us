@@ -4,6 +4,107 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.jaeychoi.dailyus.post.mapper.PostMapper">
 
+    <resultMap id="postFeedRowResultMap" type="com.jaeychoi.dailyus.post.dto.PostFeedRow">
+        <constructor>
+            <idArg column="post_id" javaType="java.lang.Long"/>
+            <arg column="user_id" javaType="java.lang.Long"/>
+            <arg column="nickname" javaType="java.lang.String"/>
+            <arg column="profile_image" javaType="java.lang.String"/>
+            <arg column="content" javaType="java.lang.String"/>
+            <arg column="like_count" javaType="java.lang.Long"/>
+            <arg column="created_at" javaType="java.time.LocalDateTime"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="postImageRowResultMap" type="com.jaeychoi.dailyus.post.dto.PostImageRow">
+        <constructor>
+            <arg column="post_id" javaType="java.lang.Long"/>
+            <arg column="image_url" javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <select id="existsFeedPosts" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM (
+                     SELECT gm.user_id
+                     FROM group_members gm
+                     WHERE gm.group_id IN (
+                         SELECT my_group.group_id
+                         FROM group_members my_group
+                         WHERE my_group.user_id = #{userId}
+                     )
+                     UNION
+                     SELECT uf.followee
+                     FROM user_follow uf
+                     WHERE uf.follower = #{userId}
+                 ) related_users
+            INNER JOIN users u ON u.user_id = related_users.user_id
+            INNER JOIN posts p ON p.user_id = related_users.user_id
+            WHERE u.deleted_at IS NULL
+              AND p.deleted_at IS NULL
+        )
+    </select>
+
+    <select id="findFeedPosts" resultMap="postFeedRowResultMap">
+        SELECT p.post_id,
+               u.user_id,
+               u.nickname,
+               u.profile_image,
+               p.content,
+               p.like_count,
+               p.created_at
+        FROM (
+                 SELECT user_id
+                 FROM group_members
+                 WHERE group_id IN (
+                     SELECT m.group_id
+                     FROM group_members m
+                     WHERE m.user_id = #{userId}
+                 )
+                 UNION
+                 SELECT f.followee user_id
+                 FROM user_follow f
+                 WHERE f.follower = #{userId}
+             ) r
+        JOIN users u ON u.user_id = r.user_id
+        JOIN posts p ON p.user_id = u.user_id
+        WHERE u.deleted_at IS NULL
+        AND p.deleted_at IS NULL
+        ORDER BY p.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+    
+    <select id="findRecentFeedPosts" resultMap="postFeedRowResultMap">
+        SELECT p.post_id,
+               u.user_id,
+               u.nickname,
+               u.profile_image,
+               p.content,
+               p.like_count,
+               p.created_at
+        FROM posts p
+        JOIN users u ON u.user_id = p.user_id
+        WHERE p.deleted_at IS NULL
+        AND u.deleted_at IS NULL
+        ORDER BY p.created_at desc
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="findImagesByPostIds" resultMap="postImageRowResultMap">
+      SELECT i.post_id,
+      i.image_url
+      FROM post_images i
+      JOIN posts p ON p.post_id = i.post_id
+      WHERE i.deleted_at IS NULL
+      AND p.deleted_at IS NULL
+      AND i.post_id IN
+      <foreach collection="postIds" item="postId" open="(" separator="," close=")">
+        #{postId}
+      </foreach>
+      ORDER BY i.post_id, i.created_at
+    </select>
+
     <insert id="insert"
             parameterType="com.jaeychoi.dailyus.post.domain.Post"
             useGeneratedKeys="true"
