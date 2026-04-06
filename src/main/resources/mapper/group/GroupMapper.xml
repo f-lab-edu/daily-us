@@ -77,11 +77,4 @@
     WHERE user_id = #{userId}
   </select>
 
-  <update id="increaseMemberCount" parameterType="long">
-    UPDATE user_groups
-    SET member_count = member_count + 1
-    WHERE group_id = #{groupId}
-      AND deleted_at IS NULL
-  </update>
-
 </mapper>
