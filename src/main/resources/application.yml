@@ -24,7 +24,9 @@ jwt:
   refresh-token-expiration-seconds: 1209600
 
 management:
+  server:
+    port: 8081
   endpoints:
     web:
       exposure:
-        include: prometheus
+        include: prometheus,health,info,metrics
