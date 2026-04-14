@@ -28,8 +28,7 @@ class PostFeedServiceTest {
   private PostFeedService postFeedService;
 
   @Test
-  void getFeedReturnsPersonalizedFeedWithImages() {
-    // given
+  void getFeedReturnsPersonalizedFeedWithCompositeCursor() {
     Long userId = 1L;
     PostFeedRow firstRow = new PostFeedRow(
         10L,
@@ -49,21 +48,32 @@ class PostFeedServiceTest {
         1L,
         LocalDateTime.of(2026, 4, 6, 9, 0)
     );
+    PostFeedRow thirdRow = new PostFeedRow(
+        8L,
+        4L,
+        "author-3",
+        "https://example.com/profile-3.png",
+        "content-3",
+        0L,
+        LocalDateTime.of(2026, 4, 6, 8, 0)
+    );
+
     when(postMapper.existsFeedPosts(userId)).thenReturn(true);
-    when(postMapper.findFeedPosts(userId, 10L, 0L)).thenReturn(List.of(firstRow, secondRow));
+    when(postMapper.findFeedPosts(userId, 3L, null, null))
+        .thenReturn(List.of(firstRow, secondRow, thirdRow));
     when(postMapper.findImagesByPostIds(List.of(10L, 9L))).thenReturn(List.of(
         new PostImageRow(10L, "https://cdn.example.com/10-1.png"),
         new PostImageRow(10L, "https://cdn.example.com/10-2.png"),
         new PostImageRow(9L, "https://cdn.example.com/9-1.png")
     ));
 
-    // when
-    PostFeedResponse response = postFeedService.getFeed(userId, 0L, 10L);
+    PostFeedResponse response = postFeedService.getFeed(userId, null, null, 2L);
 
-    // then
-    verify(postMapper, never()).findRecentFeedPosts(10L, 0L);
-    assertThat(response.page()).isEqualTo(0L);
-    assertThat(response.size()).isEqualTo(10L);
+    verify(postMapper, never()).findRecentFeedPosts(3L, null, null);
+    assertThat(response.lastCreatedAt()).isEqualTo(LocalDateTime.of(2026, 4, 6, 9, 0));
+    assertThat(response.lastPostId()).isEqualTo(9L);
+    assertThat(response.hasNext()).isTrue();
+    assertThat(response.size()).isEqualTo(2L);
     assertThat(response.items()).hasSize(2);
     assertThat(response.items().get(0).postId()).isEqualTo(10L);
     assertThat(response.items().get(0).imageUrls())
@@ -74,9 +84,9 @@ class PostFeedServiceTest {
   }
 
   @Test
-  void getFeedReturnsRecentPostsWhenFeedPostsDoNotExist() {
-    // given
+  void getFeedPassesCompositeCursorToRecentFeedQuery() {
     Long userId = 1L;
+    LocalDateTime cursorCreatedAt = LocalDateTime.of(2026, 4, 6, 9, 0);
     PostFeedRow recentRow = new PostFeedRow(
         8L,
         4L,
@@ -86,34 +96,37 @@ class PostFeedServiceTest {
         0L,
         LocalDateTime.of(2026, 4, 6, 8, 0)
     );
+
     when(postMapper.existsFeedPosts(userId)).thenReturn(false);
-    when(postMapper.findRecentFeedPosts(10L, 0L)).thenReturn(List.of(recentRow));
+    when(postMapper.findRecentFeedPosts(11L, cursorCreatedAt, 15L)).thenReturn(List.of(recentRow));
     when(postMapper.findImagesByPostIds(List.of(8L))).thenReturn(List.of());
 
-    // when
-    PostFeedResponse response = postFeedService.getFeed(userId, 0L, 10L);
+    PostFeedResponse response = postFeedService.getFeed(userId, cursorCreatedAt, 15L, 10L);
 
-    // then
-    verify(postMapper).findRecentFeedPosts(10L, 0L);
+    verify(postMapper).findRecentFeedPosts(11L, cursorCreatedAt, 15L);
     assertThat(response.items()).hasSize(1);
     assertThat(response.items().get(0).postId()).isEqualTo(8L);
+    assertThat(response.lastCreatedAt()).isNull();
+    assertThat(response.lastPostId()).isNull();
+    assertThat(response.hasNext()).isFalse();
   }
 
   @Test
-  void getFeedReturnsEmptyItemsWhenFeedPostsExistButRequestedPageHasNoRows() {
-    // given
+  void getFeedReturnsEmptyItemsWhenCursorHasNoRows() {
     Long userId = 1L;
+    LocalDateTime cursorCreatedAt = LocalDateTime.of(2026, 4, 6, 9, 0);
+
     when(postMapper.existsFeedPosts(userId)).thenReturn(true);
-    when(postMapper.findFeedPosts(userId, 10L, 10L)).thenReturn(List.of());
+    when(postMapper.findFeedPosts(userId, 11L, cursorCreatedAt, 9L)).thenReturn(List.of());
 
-    // when
-    PostFeedResponse response = postFeedService.getFeed(userId, 1L, 10L);
+    PostFeedResponse response = postFeedService.getFeed(userId, cursorCreatedAt, 9L, 10L);
 
-    // then
-    verify(postMapper, never()).findRecentFeedPosts(10L, 10L);
+    verify(postMapper, never()).findRecentFeedPosts(11L, cursorCreatedAt, 9L);
     verify(postMapper, never()).findImagesByPostIds(anyList());
     assertThat(response.items()).isEmpty();
-    assertThat(response.page()).isEqualTo(1L);
     assertThat(response.size()).isEqualTo(10L);
+    assertThat(response.lastCreatedAt()).isNull();
+    assertThat(response.lastPostId()).isNull();
+    assertThat(response.hasNext()).isFalse();
   }
 }
