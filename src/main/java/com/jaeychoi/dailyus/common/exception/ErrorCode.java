@@ -13,7 +13,7 @@ public enum ErrorCode {
   INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_005",
       "Refresh token is invalid or expired."),
   GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "GRP_001", "Group not found."),
-  GROUP_ALREADY_EXISTS(HttpStatus.CONFLICT, "GRP_002", "Group is already in use."),
+  GROUP_ALREADY_JOINED(HttpStatus.CONFLICT, "GRP_002", "Group is already in use."),
   GROUP_MEMBER_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "GRP_003", "Group is full."),
   GROUP_USER_JOIN_LIMIT(HttpStatus.CONFLICT, "GRP_004",
       "User has reached the maximum number of groups they can join."),

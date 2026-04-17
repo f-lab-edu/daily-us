@@ -45,7 +45,7 @@ public class GroupJoinService {
 
   private void validateNotJoined(Long groupId, Long userId) {
     if (groupMapper.existsMemberByIdAndMemberId(groupId, userId)) {
-      throw new BaseException(ErrorCode.GROUP_ALREADY_EXISTS);
+      throw new BaseException(ErrorCode.GROUP_ALREADY_JOINED);
     }
   }
 

@@ -168,7 +168,7 @@ class GroupControllerTest {
   void joinGroupReturnsConflictWhenAlreadyJoined() throws Exception {
     // given
     when(groupJoinService.join(anyLong(), anyLong()))
-        .thenThrow(new BaseException(ErrorCode.GROUP_ALREADY_EXISTS));
+        .thenThrow(new BaseException(ErrorCode.GROUP_ALREADY_JOINED));
 
     // when
     // then
@@ -177,8 +177,8 @@ class GroupControllerTest {
                 AuthRequestAttributes.CURRENT_USER,
                 new CurrentUser(2L, "tester@example.com", "tester")))
         .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.code").value(ErrorCode.GROUP_ALREADY_EXISTS.getCode()))
-        .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_ALREADY_EXISTS.getMessage()))
+        .andExpect(jsonPath("$.code").value(ErrorCode.GROUP_ALREADY_JOINED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_ALREADY_JOINED.getMessage()))
         .andExpect(jsonPath("$.data").doesNotExist());
   }
 }

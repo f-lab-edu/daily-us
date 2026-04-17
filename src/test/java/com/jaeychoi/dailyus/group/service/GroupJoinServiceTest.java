@@ -84,7 +84,7 @@ class GroupJoinServiceTest {
     assertThatThrownBy(() -> groupJoinService.join(groupId, userId))
         .isInstanceOf(BaseException.class)
         .extracting(exception -> ((BaseException) exception).getErrorCode())
-        .isEqualTo(ErrorCode.GROUP_ALREADY_EXISTS);
+        .isEqualTo(ErrorCode.GROUP_ALREADY_JOINED);
 
     verify(groupMapper, never()).insertMember(groupId, userId);
     verify(groupMapper, never()).increaseMemberCount(groupId);
