@@ -39,7 +39,7 @@ public class PostFeedService {
         ))
         .toList();
 
-    return new PostFeedResponse(items, page, size);
+    return new PostFeedResponse(items, pageValue, sizeValue);
 
   }
 
