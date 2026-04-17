@@ -73,6 +73,7 @@ CREATE TABLE user_groups (
     intro VARCHAR(500) NULL,
     group_image VARCHAR(500) NULL,
     owner_id BIGINT NOT NULL,
+    member_count INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,

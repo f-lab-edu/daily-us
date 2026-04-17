@@ -58,6 +58,103 @@ class GroupMapperTest {
     assertThat(countGroupMember(group.getGroupId(), memberId)).isEqualTo(1);
   }
 
+  @Test
+  void findActiveByIdReturnsActiveGroup() {
+    // given
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    groupMapper.insert(group);
+    jdbcTemplate.update(
+        "UPDATE user_groups SET member_count = ? WHERE group_id = ?",
+        3,
+        group.getGroupId()
+    );
+
+    // when
+    Group found = groupMapper.findActiveById(group.getGroupId());
+
+    // then
+    assertThat(found).isNotNull();
+    assertThat(found.getGroupId()).isEqualTo(group.getGroupId());
+    assertThat(found.getOwnerId()).isEqualTo(ownerId);
+    assertThat(found.getMemberCount()).isEqualTo(3);
+  }
+
+  @Test
+  void existsMemberByIdAndMemberIdReturnsTrueWhenMemberExists() {
+    // given
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Long memberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    groupMapper.insert(group);
+    groupMapper.insertMember(group.getGroupId(), memberId);
+
+    // when
+    boolean joined = groupMapper.existsMemberByIdAndMemberId(group.getGroupId(), memberId);
+
+    // then
+    assertThat(joined).isTrue();
+  }
+
+  @Test
+  void countJoinedGroupsByMemberIdReturnsJoinedGroupCount() {
+    // given
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Long memberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
+    Long secondOwnerId = insertUser(uniqueEmail("owner2"), uniqueNickname("owner2"));
+    Group firstGroup = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    Group secondGroup = Group.builder()
+        .name("daily-us-2")
+        .intro("group intro 2")
+        .groupImage("https://example.com/group2.png")
+        .ownerId(secondOwnerId)
+        .build();
+    groupMapper.insert(firstGroup);
+    groupMapper.insert(secondGroup);
+    groupMapper.insertMember(firstGroup.getGroupId(), memberId);
+    groupMapper.insertMember(secondGroup.getGroupId(), memberId);
+
+    // when
+    int joinedGroupCount = groupMapper.countJoinedGroupsByMemberId(memberId);
+
+    // then
+    assertThat(joinedGroupCount).isEqualTo(2);
+  }
+
+  @Test
+  void increaseMemberCountUpdatesGroupMemberCount() {
+    // given
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    groupMapper.insert(group);
+
+    // when
+    groupMapper.increaseMemberCount(group.getGroupId());
+
+    // then
+    assertThat(findMemberCount(group.getGroupId())).isEqualTo(1);
+  }
+
   private Long insertUser(String email, String nickname) {
     jdbcTemplate.update(
         """
@@ -101,6 +198,14 @@ class GroupMapperTest {
     return jdbcTemplate.queryForObject(
         "SELECT owner_id FROM user_groups WHERE group_id = ?",
         Long.class,
+        groupId
+    );
+  }
+
+  private Integer findMemberCount(Long groupId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT member_count FROM user_groups WHERE group_id = ?",
+        Integer.class,
         groupId
     );
   }
