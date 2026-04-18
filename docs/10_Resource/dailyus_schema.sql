@@ -44,7 +44,7 @@ CREATE TABLE posts (
     like_count BIGINT NOT NULL DEFAULT 0,
     user_id BIGINT NOT NULL,
     PRIMARY KEY (post_id),
-    INDEX idx_posts_user_id_created_at (user_id, created_at),
+    INDEX idx_posts_user_deleted_created_at_post_id (user_id, deleted_at, created_at, post_id),
     CONSTRAINT fk_posts_user_id
         FOREIGN KEY (user_id) REFERENCES users (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
