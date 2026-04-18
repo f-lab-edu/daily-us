@@ -1,0 +1,74 @@
+### Daily Us API
+@baseUrl = http://localhost:8080
+@email = sample-email
+@password = Password1!
+@nickname = tester
+@accessToken = access-token
+@refreshToken = refresh-token
+
+### 회원가입
+POST {{baseUrl}}/api/v1/auth/signup
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "nickname": "{{nickname}}"
+}
+
+### 로그인
+# @name signin
+POST {{baseUrl}}/api/v1/auth/signin
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+> {%
+  client.global.set("accessToken", response.body.data.accessToken);
+  client.global.set("refreshToken", response.body.data.refreshToken);
+%}
+
+### 토큰 재발급
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 유저 팔로우
+POST {{baseUrl}}/api/v1/users/2/follow
+Authorization: Bearer {{accessToken}}
+
+### 유저 언팔로우
+DELETE {{baseUrl}}/api/v1/users/2/follow
+Authorization: Bearer {{accessToken}}
+
+### 게시물 생성
+POST {{baseUrl}}/api/v1/posts
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "imageUrls": [
+    "https://cdn.example.com/posts/1.png",
+    "https://cdn.example.com/posts/2.png"
+  ],
+  "content": "오늘 기록 #Morning #Routine"
+}
+
+### 피드 조회
+GET {{baseUrl}}/api/v1/posts?page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### 로그아웃
+POST {{baseUrl}}/api/v1/auth/logout
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
