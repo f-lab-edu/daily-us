@@ -7,6 +7,8 @@ import com.jaeychoi.dailyus.hashtag.mapper.HashtagMapper;
 import com.jaeychoi.dailyus.post.domain.Post;
 import com.jaeychoi.dailyus.post.dto.PostCreateRequest;
 import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
+import com.jaeychoi.dailyus.post.event.PostCreatedEvent;
+import com.jaeychoi.dailyus.post.event.PostCreatedEventPublisher;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
 import com.jaeychoi.dailyus.utils.HashtagExtractor;
 import java.util.ArrayList;
@@ -26,6 +28,7 @@ public class PostCreateService {
 
   private final PostMapper postMapper;
   private final HashtagMapper hashtagMapper;
+  private final PostCreatedEventPublisher postCreatedEventPublisher;
 
   @Transactional
   public PostCreateResponse createPost(Long userId, PostCreateRequest request) {
@@ -43,6 +46,10 @@ public class PostCreateService {
     postMapper.insert(post);
     postMapper.insertImages(post.getPostId(), request.imageUrls());
     saveHashtags(post.getPostId(), hashtags);
+    postCreatedEventPublisher.publish(new PostCreatedEvent(
+        post.getPostId(),
+        userId
+    ));
 
     return new PostCreateResponse(
         post.getPostId(),
