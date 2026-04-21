@@ -13,10 +13,12 @@ import static org.mockito.Mockito.times;
 import com.jaeychoi.dailyus.common.exception.BaseException;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.hashtag.domain.Hashtag;
+import com.jaeychoi.dailyus.hashtag.mapper.HashtagMapper;
 import com.jaeychoi.dailyus.post.domain.Post;
 import com.jaeychoi.dailyus.post.dto.PostCreateRequest;
 import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
-import com.jaeychoi.dailyus.hashtag.mapper.HashtagMapper;
+import com.jaeychoi.dailyus.post.event.PostCreatedEvent;
+import com.jaeychoi.dailyus.post.event.PostCreatedEventPublisher;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,9 @@ class PostCreateServiceTest {
 
   @Mock
   private HashtagMapper hashtagMapper;
+
+  @Mock
+  private PostCreatedEventPublisher postCreatedEventPublisher;
 
   @InjectMocks
   private PostCreateService postCreateService;
@@ -63,6 +68,7 @@ class PostCreateServiceTest {
     verify(postMapper).insert(postCaptor.capture());
     verify(postMapper).insertImages(10L, request.imageUrls());
     verify(hashtagMapper).insertPostHashtags(10L, List.of(20L, 30L));
+    verify(postCreatedEventPublisher).publish(any(PostCreatedEvent.class));
 
     assertThat(postCaptor.getValue().getUserId()).isEqualTo(1L);
     assertThat(postCaptor.getValue().getContent()).isEqualTo(request.content());
@@ -116,6 +122,7 @@ class PostCreateServiceTest {
         .extracting(Hashtag::getName)
         .containsExactly("morning", "routine");
     verify(hashtagMapper).insertPostHashtags(10L, List.of(21L, 22L));
+    verify(postCreatedEventPublisher).publish(any(PostCreatedEvent.class));
   }
 
   @Test
@@ -140,6 +147,7 @@ class PostCreateServiceTest {
     verify(postMapper).insert(any(Post.class));
     verify(postMapper).insertImages(10L, request.imageUrls());
     verify(hashtagMapper).insertPostHashtags(10L, List.of(11L, 12L));
+    verify(postCreatedEventPublisher).publish(any(PostCreatedEvent.class));
     assertThat(response.hashtags()).containsExactly("daily", "routine");
   }
 
@@ -160,6 +168,7 @@ class PostCreateServiceTest {
     verify(postMapper).insert(any(Post.class));
     verify(postMapper).insertImages(10L, request.imageUrls());
     verifyNoInteractions(hashtagMapper);
+    verify(postCreatedEventPublisher).publish(any(PostCreatedEvent.class));
     assertThat(response.hashtags()).isEmpty();
   }
 
