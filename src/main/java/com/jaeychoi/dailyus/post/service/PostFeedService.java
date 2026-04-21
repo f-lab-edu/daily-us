@@ -40,7 +40,10 @@ public class PostFeedService {
   }
 
   private long resolvePageSize(Long size) {
-    return size == null ? DEFAULT_SIZE : size;
+    if (size == null || size <= 0) {
+      return DEFAULT_SIZE;
+    }
+    return size;
   }
 
   private List<PostFeedRow> loadFeedRows(
