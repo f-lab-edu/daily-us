@@ -107,7 +107,7 @@ public class PostCreateService {
     }
 
     Hashtag newHashtag = Hashtag.builder()
-        .name(hashtagName)
+        .name(normalizedName)
         .build();
     hashtagMapper.insert(newHashtag);
     existingHashtags.put(normalizedName, newHashtag);
