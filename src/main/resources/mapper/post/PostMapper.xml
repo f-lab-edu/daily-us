@@ -71,8 +71,11 @@
         JOIN posts p ON p.user_id = u.user_id
         WHERE u.deleted_at IS NULL
         AND p.deleted_at IS NULL
+        <if test="createdAt != null and postId != null">
+          AND (p.created_at, p.post_id) &lt; (#{createdAt}, #{postId})
+        </if>
         ORDER BY p.created_at DESC, p.post_id DESC
-          LIMIT #{size} OFFSET #{offset}
+        LIMIT #{size}
     </select>
     
     <select id="findRecentFeedPosts" resultMap="postFeedRowResultMap">
@@ -87,8 +90,11 @@
         JOIN users u ON u.user_id = p.user_id
         WHERE p.deleted_at IS NULL
         AND u.deleted_at IS NULL
+        <if test="createdAt != null and postId != null">
+            AND (p.created_at, p.post_id) &lt; (#{createdAt}, #{postId})
+        </if>
         ORDER BY p.created_at DESC, p.post_id DESC
-        LIMIT #{size} OFFSET #{offset}
+        LIMIT #{size}
     </select>
 
     <select id="findImagesByPostIds" resultMap="postImageRowResultMap">

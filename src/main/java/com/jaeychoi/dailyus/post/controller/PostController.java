@@ -10,7 +10,9 @@ import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.service.PostCreateService;
 import com.jaeychoi.dailyus.post.service.PostFeedService;
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,9 +33,12 @@ public class PostController {
   @GetMapping
   @AuthRequired
   public ApiResponse<PostFeedResponse> getFeed(@AuthenticatedUser CurrentUser user,
-      @RequestParam(required = false, defaultValue = "0") Long page,
+      @RequestParam(required = false)
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+      LocalDateTime createdAt,
+      @RequestParam(required = false) Long postId,
       @RequestParam(required = false, defaultValue = "10") Long size) {
-    return ApiResponse.success(postFeedService.getFeed(user.userId(), page, size));
+    return ApiResponse.success(postFeedService.getFeed(user.userId(), createdAt, postId, size));
   }
 
   @PostMapping

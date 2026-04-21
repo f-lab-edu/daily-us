@@ -63,7 +63,7 @@ class PostControllerTest {
   void createPostReturnsCreatedResponse() throws Exception {
     PostCreateRequest request = new PostCreateRequest(
         List.of("https://cdn.example.com/1.png"),
-        "미라클 모닝 #Morning"
+        "sample content #Morning"
     );
     PostCreateResponse response = new PostCreateResponse(
         10L,
@@ -90,7 +90,7 @@ class PostControllerTest {
 
   @Test
   void createPostReturnsBadRequestWhenImagesAreEmpty() throws Exception {
-    PostCreateRequest request = new PostCreateRequest(List.of(), "매일 매일");
+    PostCreateRequest request = new PostCreateRequest(List.of(), "sample content");
 
     mockMvc.perform(post("/api/v1/posts")
             .requestAttr(AuthRequestAttributes.CURRENT_USER,
@@ -114,20 +114,53 @@ class PostControllerTest {
             3L,
             LocalDateTime.of(2026, 4, 6, 10, 0)
         )),
-        0L,
+        LocalDateTime.of(2026, 4, 6, 10, 0),
+        10L,
+        true,
         10L
     );
-    when(postFeedService.getFeed(1L, 0L, 10L)).thenReturn(response);
+    when(postFeedService.getFeed(1L, null, null, 10L)).thenReturn(response);
 
     mockMvc.perform(get("/api/v1/posts")
             .requestAttr(AuthRequestAttributes.CURRENT_USER,
                 new CurrentUser(1L, "user@example.com", "user")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.code").value("OK"))
-        .andExpect(jsonPath("$.data.page").value(0L))
+        .andExpect(jsonPath("$.data.lastCreatedAt").value("2026-04-06T10:00:00"))
+        .andExpect(jsonPath("$.data.lastPostId").value(10L))
+        .andExpect(jsonPath("$.data.hasNext").value(true))
         .andExpect(jsonPath("$.data.size").value(10L))
         .andExpect(jsonPath("$.data.items[0].postId").value(10L))
         .andExpect(jsonPath("$.data.items[0].imageUrls[0]").value("https://cdn.example.com/1.png"));
+  }
+
+  @Test
+  void getFeedPassesCursorAndSizeQueryParameters() throws Exception {
+    PostFeedResponse response = new PostFeedResponse(
+        List.of(),
+        LocalDateTime.of(2026, 4, 6, 8, 0),
+        7L,
+        true,
+        5L
+    );
+    when(postFeedService.getFeed(
+        1L,
+        LocalDateTime.of(2026, 4, 6, 9, 0),
+        15L,
+        5L
+    )).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/posts")
+            .queryParam("createdAt", "2026-04-06T09:00:00")
+            .queryParam("postId", "15")
+            .queryParam("size", "5")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.lastCreatedAt").value("2026-04-06T08:00:00"))
+        .andExpect(jsonPath("$.data.lastPostId").value(7L))
+        .andExpect(jsonPath("$.data.hasNext").value(true))
+        .andExpect(jsonPath("$.data.size").value(5L));
   }
 
   @Test

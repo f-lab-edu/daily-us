@@ -2,9 +2,9 @@ package com.jaeychoi.dailyus.post.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.jaeychoi.dailyus.post.domain.Post;
 import com.jaeychoi.dailyus.post.dto.PostFeedRow;
 import com.jaeychoi.dailyus.post.dto.PostImageRow;
-import com.jaeychoi.dailyus.post.domain.Post;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -30,24 +30,20 @@ class PostMapperTest {
 
   @Test
   void insertPersistsPostAndSetsGeneratedKey() throws Exception {
-    // given
     Long userId = insertUser("author@example.com", "author");
     Post post = Post.builder()
         .userId(userId)
         .content("today's routine")
         .build();
 
-    // when
     postMapper.insert(post);
 
-    // then
     assertThat(post.getPostId()).isNotNull();
     assertThat(countPosts(post.getPostId())).isEqualTo(1);
   }
 
   @Test
   void insertImagesPersistsAllPostImages() throws Exception {
-    // given
     Long userId = insertUser("images@example.com", "images");
     Long postId = insertPost(userId, "post with images");
     List<String> imageUrls = List.of(
@@ -55,10 +51,8 @@ class PostMapperTest {
         "https://cdn.example.com/2.png"
     );
 
-    // when
     postMapper.insertImages(postId, imageUrls);
 
-    // then
     assertThat(countPostImages(postId)).isEqualTo(2);
     assertThat(loadPostImageUrls(postId))
         .containsExactlyInAnyOrderElementsOf(imageUrls);
@@ -66,7 +60,6 @@ class PostMapperTest {
 
   @Test
   void findFeedPostsReturnsPostsFromFolloweesAndGroupMembers() throws Exception {
-    // given
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
     Long followeeId = insertUser(uniqueEmail("followee"), uniqueNickname("followee"));
     Long groupMemberId = insertUser(uniqueEmail("group-member"), uniqueNickname("group-member"));
@@ -77,14 +70,14 @@ class PostMapperTest {
     insertGroupMember(groupId, groupMemberId);
     Long followeePostId = insertPost(followeeId, "followee post");
     Long groupMemberPostId = insertPost(groupMemberId, "group member post");
+    updatePostCreatedAt(followeePostId, LocalDateTime.of(2026, 4, 6, 9, 0));
+    updatePostCreatedAt(groupMemberPostId, LocalDateTime.of(2026, 4, 6, 8, 0));
     insertPost(outsiderId, "outsider post");
 
-    // when
-    List<PostFeedRow> rows = postMapper.findFeedPosts(loginUserId, 10L, 0L);
+    List<PostFeedRow> rows = postMapper.findFeedPosts(loginUserId, 10L, null, null);
 
-    // then
     assertThat(rows).extracting(PostFeedRow::postId)
-        .contains(followeePostId, groupMemberPostId)
+        .containsSequence(followeePostId, groupMemberPostId)
         .doesNotContainNull();
     assertThat(rows).extracting(PostFeedRow::userId)
         .contains(followeeId, groupMemberId)
@@ -92,55 +85,111 @@ class PostMapperTest {
   }
 
   @Test
+  void findFeedPostsReturnsRowsAfterCompositeCursor() throws Exception {
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long followeeId = insertUser(uniqueEmail("followee"), uniqueNickname("followee"));
+    insertFollow(loginUserId, followeeId);
+    Long olderPostId = insertPost(followeeId, "older post");
+    Long cursorPostId = insertPost(followeeId, "cursor post");
+    Long newerPostId = insertPost(followeeId, "newer post");
+    updatePostCreatedAt(olderPostId, LocalDateTime.of(2026, 4, 6, 8, 0));
+    updatePostCreatedAt(cursorPostId, LocalDateTime.of(2026, 4, 6, 9, 0));
+    updatePostCreatedAt(newerPostId, LocalDateTime.of(2026, 4, 6, 10, 0));
+
+    List<PostFeedRow> rows = postMapper.findFeedPosts(
+        loginUserId,
+        10L,
+        LocalDateTime.of(2026, 4, 6, 9, 0),
+        cursorPostId
+    );
+
+    assertThat(rows).extracting(PostFeedRow::postId)
+        .contains(olderPostId)
+        .doesNotContain(cursorPostId, newerPostId);
+  }
+
+  @Test
+  void findFeedPostsUsesPostIdAsTieBreakerWithinSameCreatedAt() throws Exception {
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long followeeId = insertUser(uniqueEmail("followee"), uniqueNickname("followee"));
+    insertFollow(loginUserId, followeeId);
+    Long lowerPostId = insertPost(followeeId, "lower post");
+    Long higherPostId = insertPost(followeeId, "higher post");
+    LocalDateTime sameCreatedAt = LocalDateTime.of(2026, 4, 6, 9, 0);
+    updatePostCreatedAt(lowerPostId, sameCreatedAt);
+    updatePostCreatedAt(higherPostId, sameCreatedAt);
+
+    List<PostFeedRow> rows = postMapper.findFeedPosts(loginUserId, 10L, sameCreatedAt, higherPostId);
+
+    assertThat(rows).extracting(PostFeedRow::postId)
+        .contains(lowerPostId)
+        .doesNotContain(higherPostId);
+  }
+
+  @Test
   void existsFeedPostsReturnsTrueWhenRelatedUsersHavePosts() throws Exception {
-    // given
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
     Long followeeId = insertUser(uniqueEmail("followee"), uniqueNickname("followee"));
     insertFollow(loginUserId, followeeId);
     insertPost(followeeId, "followee post");
 
-    // when
     boolean exists = postMapper.existsFeedPosts(loginUserId);
 
-    // then
     assertThat(exists).isTrue();
   }
 
   @Test
   void existsFeedPostsReturnsFalseWhenRelatedUsersHaveNoPosts() throws Exception {
-    // given
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
     Long followeeId = insertUser(uniqueEmail("followee"), uniqueNickname("followee"));
     insertFollow(loginUserId, followeeId);
 
-    // when
     boolean exists = postMapper.existsFeedPosts(loginUserId);
 
-    // then
     assertThat(exists).isFalse();
   }
 
   @Test
-  void findRecentFeedPostsReturnsRecentPostsOrderedByCreatedAtDesc() throws Exception {
-    // given
+  void findRecentFeedPostsReturnsRecentPostsOrderedByCreatedAtDescThenPostIdDesc() throws Exception {
     Long firstUserId = insertUser(uniqueEmail("first"), uniqueNickname("first"));
     Long secondUserId = insertUser(uniqueEmail("second"), uniqueNickname("second"));
     Long olderPostId = insertPost(firstUserId, "older post");
-    Long newerPostId = insertPost(secondUserId, "newer post");
+    Long sameTimeLowerPostId = insertPost(firstUserId, "same-time lower");
+    Long sameTimeHigherPostId = insertPost(secondUserId, "same-time higher");
     updatePostCreatedAt(olderPostId, LocalDateTime.of(2026, 4, 6, 8, 0));
-    updatePostCreatedAt(newerPostId, LocalDateTime.of(2026, 4, 6, 9, 0));
+    updatePostCreatedAt(sameTimeLowerPostId, LocalDateTime.of(2026, 4, 6, 9, 0));
+    updatePostCreatedAt(sameTimeHigherPostId, LocalDateTime.of(2026, 4, 6, 9, 0));
 
-    // when
-    List<PostFeedRow> rows = postMapper.findRecentFeedPosts(10L, 0L);
+    List<PostFeedRow> rows = postMapper.findRecentFeedPosts(10L, null, null);
 
-    // then
     assertThat(rows).extracting(PostFeedRow::postId)
-        .containsSequence(newerPostId, olderPostId);
+        .containsSequence(sameTimeHigherPostId, sameTimeLowerPostId, olderPostId);
+  }
+
+  @Test
+  void findRecentFeedPostsReturnsRowsAfterCompositeCursor() throws Exception {
+    Long firstUserId = insertUser(uniqueEmail("first"), uniqueNickname("first"));
+    Long secondUserId = insertUser(uniqueEmail("second"), uniqueNickname("second"));
+    Long olderPostId = insertPost(secondUserId, "older post");
+    Long cursorPostId = insertPost(firstUserId, "cursor post");
+    Long newerPostId = insertPost(firstUserId, "newer post");
+    updatePostCreatedAt(olderPostId, LocalDateTime.of(2026, 4, 6, 8, 0));
+    updatePostCreatedAt(cursorPostId, LocalDateTime.of(2026, 4, 6, 9, 0));
+    updatePostCreatedAt(newerPostId, LocalDateTime.of(2026, 4, 6, 10, 0));
+
+    List<PostFeedRow> rows = postMapper.findRecentFeedPosts(
+        10L,
+        LocalDateTime.of(2026, 4, 6, 9, 0),
+        cursorPostId
+    );
+
+    assertThat(rows).extracting(PostFeedRow::postId)
+        .contains(olderPostId)
+        .doesNotContain(cursorPostId, newerPostId);
   }
 
   @Test
   void findImagesByPostIdsReturnsImagesGroupedInCreatedOrder() throws Exception {
-    // given
     Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
     Long firstPostId = insertPost(userId, "first post");
     Long secondPostId = insertPost(userId, "second post");
@@ -150,10 +199,8 @@ class PostMapperTest {
     ));
     postMapper.insertImages(secondPostId, List.of("https://cdn.example.com/second-1.png"));
 
-    // when
     List<PostImageRow> rows = postMapper.findImagesByPostIds(List.of(firstPostId, secondPostId));
 
-    // then
     assertThat(rows).extracting(PostImageRow::postId)
         .containsExactly(firstPostId, firstPostId, secondPostId);
     assertThat(rows).extracting(PostImageRow::imageUrl)
