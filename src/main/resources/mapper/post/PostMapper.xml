@@ -97,6 +97,24 @@
         LIMIT #{size}
     </select>
 
+    <select id="findFeedPostsByIds" resultMap="postFeedRowResultMap">
+        SELECT p.post_id,
+               u.user_id,
+               u.nickname,
+               u.profile_image,
+               p.content,
+               p.like_count,
+               p.created_at
+        FROM posts p
+        JOIN users u ON u.user_id = p.user_id
+        WHERE p.deleted_at IS NULL
+        AND u.deleted_at IS NULL
+        AND p.post_id IN
+        <foreach collection="postIds" item="postId" open="(" separator="," close=")">
+            #{postId}
+        </foreach>
+    </select>
+
     <select id="findImagesByPostIds" resultMap="postImageRowResultMap">
       SELECT i.post_id,
       i.image_url
