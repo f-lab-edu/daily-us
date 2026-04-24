@@ -27,17 +27,21 @@
         SELECT EXISTS (
             SELECT 1
             FROM (
-                     SELECT gm.user_id
-                     FROM group_members gm
-                     WHERE gm.group_id IN (
-                         SELECT my_group.group_id
-                         FROM group_members my_group
-                         WHERE my_group.user_id = #{userId}
-                     )
-                     UNION
-                     SELECT uf.followee
-                     FROM user_follow uf
-                     WHERE uf.follower = #{userId}
+                   SELECT gm.user_id
+                   FROM group_members gm
+                          JOIN user_groups ug ON ug.group_id = gm.group_id
+                   WHERE gm.group_id IN (
+                     SELECT m.group_id
+                     FROM group_members m
+                            JOIN user_groups my_ug ON my_ug.group_id = m.group_id
+                     WHERE m.user_id = #{userId}
+                       AND my_ug.deleted_at IS NULL
+                   )
+                     AND ug.deleted_at IS NULL
+                   UNION
+                   SELECT f.followee user_id
+                   FROM user_follow f
+                   WHERE f.follower = #{userId}
                  ) related_users
             INNER JOIN users u ON u.user_id = related_users.user_id
             INNER JOIN posts p ON p.user_id = related_users.user_id
@@ -55,13 +59,17 @@
                p.like_count,
                p.created_at
         FROM (
-                 SELECT user_id
-                 FROM group_members
-                 WHERE group_id IN (
+                 SELECT gm.user_id
+                 FROM group_members gm
+                 JOIN user_groups ug ON ug.group_id = gm.group_id
+                 WHERE gm.group_id IN (
                      SELECT m.group_id
                      FROM group_members m
+                     JOIN user_groups my_ug ON my_ug.group_id = m.group_id
                      WHERE m.user_id = #{userId}
+                       AND my_ug.deleted_at IS NULL
                  )
+                 AND ug.deleted_at IS NULL
                  UNION
                  SELECT f.followee user_id
                  FROM user_follow f
