@@ -116,7 +116,7 @@ public class PostFeedService {
   }
 
   private PostFeedRow getLastRow(List<PostFeedRow> rows) {
-    return rows.get(rows.size() - 1);
+    return rows.isEmpty() ? null : rows.get(rows.size() - 1);
   }
 
   private Map<Long, List<String>> loadImageUrlsByPostId(List<PostFeedRow> rows) {
