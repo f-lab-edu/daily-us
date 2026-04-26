@@ -15,8 +15,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PostFeedService {
@@ -41,14 +43,13 @@ public class PostFeedService {
     boolean hasNext = hasNext(rows, pageSize);
     List<PostFeedRow> pageRows = getPageRows(rows, pageSize, hasNext);
     Map<Long, List<String>> imageUrlsByPostId = loadImageUrlsByPostId(pageRows);
-    PostFeedRow lastRow = hasNext ? getLastRow(pageRows) : null;
-
+    PostFeedRow lastRow = getLastRow(pageRows);
     return new PostFeedResponse(
         toItems(pageRows, imageUrlsByPostId),
         lastRow == null ? null : lastRow.createdAt(),
         lastRow == null ? null : lastRow.postId(),
         hasNext,
-        pageSize
+        (long) pageRows.size()
     );
   }
 
