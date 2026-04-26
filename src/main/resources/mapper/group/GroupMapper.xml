@@ -89,7 +89,6 @@
                             AND my_ug.deleted_at IS NULL)
       AND ug.deleted_at IS NULL
       AND u.deleted_at IS NULL
-    ORDER BY gm.user_id DESC
   </select>
 
 </mapper>
