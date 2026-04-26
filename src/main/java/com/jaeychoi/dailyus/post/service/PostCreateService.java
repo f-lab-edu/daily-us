@@ -14,6 +14,7 @@ import com.jaeychoi.dailyus.utils.HashtagExtractor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -46,9 +47,14 @@ public class PostCreateService {
     postMapper.insert(post);
     postMapper.insertImages(post.getPostId(), request.imageUrls());
     saveHashtags(post.getPostId(), hashtags);
+    Post savedPost = Objects.requireNonNull(
+        postMapper.findById(post.getPostId()),
+        "Saved post must exist after insert."
+    );
     postCreatedEventPublisher.publish(new PostCreatedEvent(
         post.getPostId(),
-        userId
+        userId,
+        savedPost.getCreatedAt()
     ));
 
     return new PostCreateResponse(
