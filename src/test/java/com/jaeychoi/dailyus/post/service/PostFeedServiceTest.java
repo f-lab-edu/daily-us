@@ -172,9 +172,10 @@ class PostFeedServiceTest {
     verify(postMapper).findRecentFeedPosts(11L, cursorCreatedAt, 15L);
     assertThat(response.items()).hasSize(1);
     assertThat(response.items().get(0).postId()).isEqualTo(8L);
-    assertThat(response.lastCreatedAt()).isNull();
-    assertThat(response.lastPostId()).isNull();
+    assertThat(response.lastCreatedAt()).isEqualTo(LocalDateTime.of(2026, 4, 6, 8, 0));
+    assertThat(response.lastPostId()).isEqualTo(8L);
     assertThat(response.hasNext()).isFalse();
+    assertThat(response.size()).isEqualTo(1L);
   }
 
   @Test
@@ -191,7 +192,7 @@ class PostFeedServiceTest {
     verify(postMapper, never()).findRecentFeedPosts(11L, cursorCreatedAt, 9L);
     verify(postMapper, never()).findImagesByPostIds(anyList());
     assertThat(response.items()).isEmpty();
-    assertThat(response.size()).isEqualTo(10L);
+    assertThat(response.size()).isEqualTo(0L);
     assertThat(response.lastCreatedAt()).isNull();
     assertThat(response.lastPostId()).isNull();
     assertThat(response.hasNext()).isFalse();

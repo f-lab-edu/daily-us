@@ -20,6 +20,7 @@ import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
 import com.jaeychoi.dailyus.post.event.PostCreatedEvent;
 import com.jaeychoi.dailyus.post.event.PostCreatedEventPublisher;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +31,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class PostCreateServiceTest {
+
+  private static final LocalDateTime SAVED_POST_CREATED_AT = LocalDateTime.of(2026, 4, 26, 12, 0);
 
   @Mock
   private PostMapper postMapper;
@@ -54,6 +57,7 @@ class PostCreateServiceTest {
       post.setPostId(10L);
       return null;
     }).when(postMapper).insert(any(Post.class));
+    stubSavedPostLookup(10L, 1L);
     when(hashtagMapper.findByNames(List.of("morning", "routine")))
         .thenReturn(List.of(Hashtag.builder().hashtagId(30L).name("routine").build()));
     doAnswer(invocation -> {
@@ -103,6 +107,7 @@ class PostCreateServiceTest {
       post.setPostId(10L);
       return null;
     }).when(postMapper).insert(any(Post.class));
+    stubSavedPostLookup(10L, 1L);
     when(hashtagMapper.findByNames(List.of("morning", "routine"))).thenReturn(List.of());
     doAnswer(invocation -> {
       Hashtag hashtag = invocation.getArgument(0);
@@ -136,6 +141,7 @@ class PostCreateServiceTest {
       post.setPostId(10L);
       return null;
     }).when(postMapper).insert(any(Post.class));
+    stubSavedPostLookup(10L, 1L);
     when(hashtagMapper.findByNames(List.of("daily", "routine")))
         .thenReturn(List.of(
             Hashtag.builder().hashtagId(11L).name("daily").build(),
@@ -162,6 +168,7 @@ class PostCreateServiceTest {
       post.setPostId(10L);
       return null;
     }).when(postMapper).insert(any(Post.class));
+    stubSavedPostLookup(10L, 1L);
 
     PostCreateResponse response = postCreateService.createPost(1L, request);
 
@@ -185,5 +192,14 @@ class PostCreateServiceTest {
         .isEqualTo(ErrorCode.POST_HASHTAG_LIMIT_EXCEEDED);
 
     verify(postMapper, never()).insert(any(Post.class));
+  }
+
+  private void stubSavedPostLookup(Long postId, Long userId) {
+    when(postMapper.findById(postId))
+        .thenReturn(Post.builder()
+            .postId(postId)
+            .userId(userId)
+            .createdAt(SAVED_POST_CREATED_AT)
+            .build());
   }
 }

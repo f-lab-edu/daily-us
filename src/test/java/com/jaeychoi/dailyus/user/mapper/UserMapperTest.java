@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
@@ -24,14 +25,18 @@ class UserMapperTest {
   @Test
   void existsActiveByEmailAndNicknameReturnsTrueOnlyForActiveUsers() throws Exception {
     // given
-    insertUser("active@example.com", "active-user", null);
-    insertUser("deleted@example.com", "deleted-user", LocalDateTime.of(2026, 3, 26, 10, 0));
+    String activeEmail = uniqueEmail("active");
+    String activeNickname = uniqueNickname("active-user");
+    String deletedEmail = uniqueEmail("deleted");
+    String deletedNickname = uniqueNickname("deleted-user");
+    insertUser(activeEmail, activeNickname, null);
+    insertUser(deletedEmail, deletedNickname, LocalDateTime.of(2026, 3, 26, 10, 0));
 
     // when
-    boolean activeEmailExists = userMapper.existsActiveByEmail("active@example.com");
-    boolean activeNicknameExists = userMapper.existsActiveByNickname("active-user");
-    boolean deletedEmailExists = userMapper.existsActiveByEmail("deleted@example.com");
-    boolean deletedNicknameExists = userMapper.existsActiveByNickname("deleted-user");
+    boolean activeEmailExists = userMapper.existsActiveByEmail(activeEmail);
+    boolean activeNicknameExists = userMapper.existsActiveByNickname(activeNickname);
+    boolean deletedEmailExists = userMapper.existsActiveByEmail(deletedEmail);
+    boolean deletedNicknameExists = userMapper.existsActiveByNickname(deletedNickname);
 
     // then
     assertThat(activeEmailExists).isTrue();
@@ -43,10 +48,10 @@ class UserMapperTest {
   @Test
   void existsActiveByIdReturnsTrueOnlyForActiveUsers() throws Exception {
     // given
-    Long activeUserId = insertUser("active-id@example.com", "active-id-user", null);
+    Long activeUserId = insertUser(uniqueEmail("active-id"), uniqueNickname("active-id-user"), null);
     Long deletedUserId = insertUser(
-        "deleted-id@example.com",
-        "deleted-id-user",
+        uniqueEmail("deleted-id"),
+        uniqueNickname("deleted-id-user"),
         LocalDateTime.of(2026, 3, 26, 10, 0)
     );
 
@@ -62,10 +67,12 @@ class UserMapperTest {
   @Test
   void insertPersistsUserAndSetsGeneratedKey() {
     // given
+    String email = uniqueEmail("new");
+    String nickname = uniqueNickname("new-user");
     User user = User.builder()
-        .email("new@example.com")
+        .email(email)
         .password("encoded-password")
-        .nickname("new-user")
+        .nickname(nickname)
         .build();
 
     // when
@@ -73,8 +80,8 @@ class UserMapperTest {
 
     // then
     assertThat(user.getUserId()).isNotNull();
-    assertThat(userMapper.existsActiveByEmail("new@example.com")).isTrue();
-    assertThat(userMapper.existsActiveByNickname("new-user")).isTrue();
+    assertThat(userMapper.existsActiveByEmail(email)).isTrue();
+    assertThat(userMapper.existsActiveByNickname(nickname)).isTrue();
   }
 
   private Long insertUser(String email, String nickname, LocalDateTime deletedAt) throws Exception {
@@ -107,5 +114,13 @@ class UserMapperTest {
         return generatedKeys.getLong(1);
       }
     }
+  }
+
+  private String uniqueEmail(String prefix) {
+    return prefix + "-" + UUID.randomUUID() + "@example.com";
+  }
+
+  private String uniqueNickname(String prefix) {
+    return prefix + "-" + UUID.randomUUID();
   }
 }
