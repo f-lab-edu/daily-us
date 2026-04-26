@@ -1,8 +1,13 @@
 package com.jaeychoi.dailyus.post.repository;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.dao.TypeMismatchDataAccessException;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -56,7 +61,7 @@ public class PostFeedRepository {
   private final StringRedisTemplate redisTemplate;
 
   public PostFeedRepository(
-      RedisTemplate<String, Object> redisTemplate
+      StringRedisTemplate redisTemplate
   ) {
     this.redisTemplate = redisTemplate;
   }
@@ -66,20 +71,18 @@ public class PostFeedRepository {
       Long cursor,
       long size
   ) {
-    Object cached = redisTemplate.opsForValue().get(buildKey(userId));
-    if (cached == null) {
+    if (userId == null || size <= 0) {
       return null;
     }
-    if (!(cached instanceof List)) {
-      throw new TypeMismatchDataAccessException("Cached Object type mismatch.");
-    }
-    List<?> cachedPosts = (List<?>) cached;
-    List<Long> postIds = cachedPosts.stream()
-        .map(this::toLong)
-        .toList();
 
-    int startIndex = resolveStartIndex(postIds, cursor);
-    if (startIndex < 0) {
+    Object cached = redisTemplate.execute(
+        FIND_BY_CURSOR_SCRIPT,
+        List.of(buildKey(userId)),
+        resolveCursor(cursor),
+        String.valueOf(size)
+    );
+
+    if (!(cached instanceof List<?> cachedPosts) || cachedPosts.isEmpty()) {
       return null;
     }
 
@@ -121,26 +124,34 @@ public class PostFeedRepository {
     return KEY_PREFIX + userId;
   }
 
-  private int resolveStartIndex(List<Long> postIds, Long postId) {
-    if (postId == null) {
-      return 0;
-    }
-
-    int cursorIndex = postIds.indexOf(postId);
-    if (cursorIndex < 0) {
-      return -1;
-    }
-
-    return cursorIndex + 1;
+  private String resolveCursor(Long cursor) {
+    return cursor == null ? "" : String.valueOf(cursor);
   }
 
-  private Long toLong(Object value) {
+  private Long toLongOrNull(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof String stringValue) {
+      if (stringValue.isBlank() || "null".equalsIgnoreCase(stringValue)) {
+        return null;
+      }
+      return Long.parseLong(stringValue);
+    }
+    if (value instanceof byte[] byteArrayValue) {
+      return toLongOrNull(new String(byteArrayValue));
+    }
     if (value instanceof Long longValue) {
       return longValue;
     }
     if (value instanceof Number numberValue) {
       return numberValue.longValue();
     }
-    throw new TypeMismatchDataAccessException("Cached post id type mismatch.");
+    throw new TypeMismatchDataAccessException(
+        "Cached post id type mismatch. valueType=" + value.getClass().getName());
+  }
+
+  private long toEpochMilli(LocalDateTime createdAt) {
+    return createdAt.atZone(ZoneId.of("Asia/Seoul")).toInstant().toEpochMilli();
   }
 }
