@@ -19,7 +19,7 @@
   <resultMap id="groupMemberRankRowResultMap"
     type="com.jaeychoi.dailyus.group.dto.GroupMemberRankRow">
     <constructor>
-      <arg column="rank" javaType="int"/>
+      <arg column="ranking" javaType="java.lang.Integer"/>
       <arg column="user_id" javaType="java.lang.Long"/>
       <arg column="nickname" javaType="java.lang.String"/>
       <arg column="profile_image" javaType="java.lang.String"/>
@@ -89,7 +89,8 @@
   </select>
 
   <select id="findMemberRanks" resultMap="groupMemberRankRowResultMap">
-    SELECT DENSE_RANK() OVER (ORDER BY ranked.post_count DESC) AS rank, ranked.user_id,
+    SELECT DENSE_RANK() OVER (ORDER BY ranked.post_count DESC) AS ranking,
+           ranked.user_id,
            ranked.nickname,
            ranked.profile_image,
            ranked.post_count
@@ -105,7 +106,7 @@
             AND p.created_at &lt; #{endAt}
           WHERE gm.group_id = #{groupId}
             AND u.deleted_at IS NULL
-          GROUP BY gm.user_id, u.nickname, u.profile_image) ranked
+          GROUP BY gm.user_id) ranked
   </select>
 
 </mapper>
