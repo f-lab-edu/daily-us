@@ -16,6 +16,17 @@
     <result property="deletedAt" column="deleted_at"/>
   </resultMap>
 
+  <resultMap id="groupMemberRankRowResultMap"
+    type="com.jaeychoi.dailyus.group.dto.GroupMemberRankRow">
+    <constructor>
+      <arg column="rank" javaType="int"/>
+      <arg column="user_id" javaType="java.lang.Long"/>
+      <arg column="nickname" javaType="java.lang.String"/>
+      <arg column="profile_image" javaType="java.lang.String"/>
+      <arg column="post_count" javaType="java.lang.Long"/>
+    </constructor>
+  </resultMap>
+
   <insert id="insert"
     parameterType="com.jaeychoi.dailyus.group.domain.Group"
     useGeneratedKeys="true"
@@ -75,6 +86,26 @@
     SELECT COUNT(*)
     FROM group_members
     WHERE user_id = #{userId}
+  </select>
+
+  <select id="findMemberRanks" resultMap="groupMemberRankRowResultMap">
+    SELECT DENSE_RANK() OVER (ORDER BY ranked.post_count DESC) AS rank, ranked.user_id,
+           ranked.nickname,
+           ranked.profile_image,
+           ranked.post_count
+    FROM (SELECT gm.user_id,
+                 u.nickname,
+                 u.profile_image,
+                 COUNT(p.post_id) AS post_count
+          FROM group_members gm
+                 JOIN users u ON u.user_id = gm.user_id
+                 LEFT JOIN posts p ON p.user_id = gm.user_id
+            AND p.deleted_at IS NULL
+            AND p.created_at &gt;= #{startAt}
+            AND p.created_at &lt; #{endAt}
+          WHERE gm.group_id = #{groupId}
+            AND u.deleted_at IS NULL
+          GROUP BY gm.user_id, u.nickname, u.profile_image) ranked
   </select>
 
 </mapper>
