@@ -3,6 +3,9 @@ package com.jaeychoi.dailyus.group.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jaeychoi.dailyus.group.domain.Group;
+import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
@@ -155,6 +158,38 @@ class GroupMapperTest {
     assertThat(findMemberCount(group.getGroupId())).isEqualTo(1);
   }
 
+  @Test
+  void findMemberRanksReturnsMonthlyPostCountsInDescendingOrder() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Long memberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    groupMapper.insert(group);
+    groupMapper.insertMember(group.getGroupId(), ownerId);
+    groupMapper.insertMember(group.getGroupId(), memberId);
+
+    insertPost(ownerId, LocalDateTime.of(2026, 4, 1, 10, 0));
+    insertPost(ownerId, LocalDateTime.of(2026, 4, 10, 10, 0));
+    insertPost(memberId, LocalDateTime.of(2026, 4, 3, 10, 0));
+    insertPost(memberId, LocalDateTime.of(2026, 3, 31, 23, 59));
+
+    List<GroupMemberRankRow> result = groupMapper.findMemberRanks(
+        group.getGroupId(),
+        LocalDateTime.of(2026, 4, 1, 0, 0),
+        LocalDateTime.of(2026, 5, 1, 0, 0)
+    );
+
+    assertThat(result).hasSize(2);
+    assertThat(result.get(0).userId()).isEqualTo(ownerId);
+    assertThat(result.get(0).postCount()).isEqualTo(2L);
+    assertThat(result.get(1).userId()).isEqualTo(memberId);
+    assertThat(result.get(1).postCount()).isEqualTo(1L);
+  }
+
   private Long insertUser(String email, String nickname) {
     jdbcTemplate.update(
         """
@@ -219,6 +254,27 @@ class GroupMapperTest {
     );
     assertThat(count).isNotNull();
     return count;
+  }
+
+  private void insertPost(Long userId, LocalDateTime createdAt) {
+    jdbcTemplate.update(
+        """
+            INSERT INTO posts (
+                content,
+                created_at,
+                updated_at,
+                deleted_at,
+                like_count,
+                user_id
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+        "content",
+        createdAt,
+        createdAt,
+        null,
+        0L,
+        userId
+    );
   }
 
   private String uniqueEmail(String prefix) {
