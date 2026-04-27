@@ -1,6 +1,8 @@
 package com.jaeychoi.dailyus.group.mapper;
 
 import com.jaeychoi.dailyus.group.domain.Group;
+import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -18,6 +20,9 @@ public interface GroupMapper {
   boolean existsMemberByIdAndMemberId(Long groupId, Long userId);
 
   int countJoinedGroupsByMemberId(Long userId);
+
+  List<GroupMemberRankRow> findMemberRanks(Long groupId, LocalDateTime startAt,
+      LocalDateTime endAt);
 
   List<Long> findMembersByMemberId(Long memberId);
 }
