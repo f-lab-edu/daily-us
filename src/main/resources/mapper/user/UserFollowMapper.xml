@@ -7,9 +7,11 @@
     <select id="existsByFollowerAndFollowee" resultType="boolean">
         SELECT EXISTS(
             SELECT 1
-            FROM user_follow
-            WHERE follower = #{follower}
-              AND followee = #{followee}
+            FROM user_follow uf
+                   JOIN users u ON u.user_id = uf.follower
+            WHERE uf.follower = #{follower}
+              AND uf.followee = #{followee}
+              AND u.deleted_at IS NULL
         )
     </select>
 
@@ -28,5 +30,13 @@
         WHERE follower = #{follower}
           AND followee = #{followee}
     </delete>
+
+    <select id="findFollowerIdsByFollowee" resultType="long">
+      SELECT uf.follower
+      FROM user_follow uf
+             JOIN users u ON u.user_id = uf.follower
+      WHERE uf.followee = #{followee}
+        AND u.deleted_at IS NULL
+    </select>
 
 </mapper>

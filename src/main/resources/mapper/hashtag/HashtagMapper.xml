@@ -4,7 +4,15 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.jaeychoi.dailyus.hashtag.mapper.HashtagMapper">
 
-    <select id="findByNames" resultType="com.jaeychoi.dailyus.hashtag.domain.Hashtag">
+    <resultMap id="hashtagResultMap" type="com.jaeychoi.dailyus.hashtag.domain.Hashtag">
+        <constructor>
+            <idArg column="hashtag_id" javaType="java.lang.Long"/>
+            <arg column="name" javaType="java.lang.String"/>
+            <arg column="created_at" javaType="java.time.LocalDateTime"/>
+        </constructor>
+    </resultMap>
+
+    <select id="findByNames" resultMap="hashtagResultMap">
         SELECT hashtag_id, name, created_at
         FROM hashtag
         WHERE name IN

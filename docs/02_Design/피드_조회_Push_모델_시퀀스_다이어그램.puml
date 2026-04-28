@@ -1,0 +1,55 @@
+@startuml
+title 피드 조회 Fan-out 기반 Kafka Push 모델 시퀀스
+
+actor User
+participant "PostController" as Controller
+participant "PostService" as PostService
+database "posts" as Posts
+database "post_images" as PostImages
+queue "Kafka" as Kafka
+participant "FeedInboxWorker" as Worker
+database "user_follow" as Follow
+database "group_members" as GroupMembers
+database "feed_inbox" as FeedInbox
+
+User -> Controller: POST /api/v1/posts
+Controller -> PostService: 게시물 작성 요청
+PostService -> Posts: 게시물 저장
+Posts --> PostService: postId
+PostService -> PostImages: 이미지 저장
+PostService -> Kafka: FeedCreated 이벤트 발행
+Kafka --> PostService: ack
+PostService --> Controller: 게시물 작성 완료
+Controller --> User: 201 Created
+
+note over Kafka
+이벤트를 로그로 보관
+Consumer 장애 시 재처리 가능
+end note
+
+Kafka -> Worker: FeedCreated 이벤트 consume
+Worker -> Follow: writer 팔로워 조회
+Follow --> Worker: followerIds
+Worker -> GroupMembers: writer 소속 그룹 멤버 조회
+GroupMembers --> Worker: groupMemberIds
+Worker -> Worker: 수신자 목록 병합 및 중복 제거
+Worker -> FeedInbox: 작성자 본인 inbox 저장
+loop 수신자별 inbox 적재
+  Worker -> FeedInbox: feed_inbox(ownerUserId, postId) 저장
+end
+Worker -> Kafka: offset commit
+
+== 이후 피드 조회 ==
+
+User -> Controller: GET /api/v1/posts?createdAt&postId&size
+Controller -> PostService: 피드 조회 요청
+PostService -> FeedInbox: 내 inbox 조회(size + 1)
+FeedInbox --> PostService: postIds
+PostService -> Posts: 게시물 상세 조회
+Posts --> PostService: 게시물 목록
+PostService -> PostImages: 이미지 조회
+PostImages --> PostService: 이미지 목록
+PostService --> Controller: items, nextCursor, hasNext
+Controller --> User: 200 OK
+
+@enduml

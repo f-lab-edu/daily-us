@@ -7,11 +7,14 @@ import com.jaeychoi.dailyus.hashtag.mapper.HashtagMapper;
 import com.jaeychoi.dailyus.post.domain.Post;
 import com.jaeychoi.dailyus.post.dto.PostCreateRequest;
 import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
+import com.jaeychoi.dailyus.post.event.PostCreatedEvent;
+import com.jaeychoi.dailyus.post.event.PostCreatedEventPublisher;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
 import com.jaeychoi.dailyus.utils.HashtagExtractor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +29,7 @@ public class PostCreateService {
 
   private final PostMapper postMapper;
   private final HashtagMapper hashtagMapper;
+  private final PostCreatedEventPublisher postCreatedEventPublisher;
 
   @Transactional
   public PostCreateResponse createPost(Long userId, PostCreateRequest request) {
@@ -43,6 +47,15 @@ public class PostCreateService {
     postMapper.insert(post);
     postMapper.insertImages(post.getPostId(), request.imageUrls());
     saveHashtags(post.getPostId(), hashtags);
+    Post savedPost = Objects.requireNonNull(
+        postMapper.findById(post.getPostId()),
+        "Saved post must exist after insert."
+    );
+    postCreatedEventPublisher.publish(new PostCreatedEvent(
+        post.getPostId(),
+        userId,
+        savedPost.getCreatedAt()
+    ));
 
     return new PostCreateResponse(
         post.getPostId(),
@@ -100,7 +113,7 @@ public class PostCreateService {
     }
 
     Hashtag newHashtag = Hashtag.builder()
-        .name(hashtagName)
+        .name(normalizedName)
         .build();
     hashtagMapper.insert(newHashtag);
     existingHashtags.put(normalizedName, newHashtag);

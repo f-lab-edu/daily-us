@@ -14,11 +14,15 @@ public interface PostMapper {
 
   void insertImages(Long postId, List<String> imageUrls);
 
+  Post findById(Long postId);
+
   boolean existsFeedPosts(Long userId);
 
   List<PostFeedRow> findFeedPosts(Long userId, Long size, LocalDateTime createdAt, Long postId);
 
   List<PostFeedRow> findRecentFeedPosts(Long size, LocalDateTime createdAt, Long postId);
+
+  List<PostFeedRow> findFeedPostsByIds(List<Long> postIds);
 
   List<PostImageRow> findImagesByPostIds(List<Long> postIds);
 }

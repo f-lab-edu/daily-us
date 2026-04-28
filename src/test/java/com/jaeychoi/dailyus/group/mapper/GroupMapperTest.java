@@ -155,6 +155,75 @@ class GroupMapperTest {
     assertThat(findMemberCount(group.getGroupId())).isEqualTo(1);
   }
 
+  @Test
+  void findMembersByMemberIdReturnsMembersInJoinedGroups() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Long memberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
+    Long teammateId = insertUser(uniqueEmail("teammate"), uniqueNickname("teammate"));
+    Long outsiderOwnerId = insertUser(uniqueEmail("owner2"), uniqueNickname("owner2"));
+    Long outsiderId = insertUser(uniqueEmail("outsider"), uniqueNickname("outsider"));
+
+    Group joinedGroup = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    Group outsiderGroup = Group.builder()
+        .name("daily-us-2")
+        .intro("group intro 2")
+        .groupImage("https://example.com/group2.png")
+        .ownerId(outsiderOwnerId)
+        .build();
+    groupMapper.insert(joinedGroup);
+    groupMapper.insert(outsiderGroup);
+    groupMapper.insertMember(joinedGroup.getGroupId(), ownerId);
+    groupMapper.insertMember(joinedGroup.getGroupId(), memberId);
+    groupMapper.insertMember(joinedGroup.getGroupId(), teammateId);
+    groupMapper.insertMember(outsiderGroup.getGroupId(), outsiderId);
+
+    assertThat(groupMapper.findMembersByMemberId(memberId))
+        .containsExactlyInAnyOrder(teammateId, memberId, ownerId);
+  }
+
+  @Test
+  void findMembersByMemberIdExcludesDeletedMembersAndDeletedGroups() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Long memberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
+    Long activeTeammateId = insertUser(uniqueEmail("active"), uniqueNickname("active"));
+    Long deletedTeammateId = insertUser(uniqueEmail("deleted"), uniqueNickname("deleted"));
+    Long deletedGroupOwnerId = insertUser(uniqueEmail("deleted-owner"), uniqueNickname("deleted-owner"));
+    Long deletedGroupMemberId = insertUser(uniqueEmail("deleted-group-member"), uniqueNickname("deleted-group-member"));
+
+    Group activeGroup = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    Group deletedGroup = Group.builder()
+        .name("daily-us-2")
+        .intro("group intro 2")
+        .groupImage("https://example.com/group2.png")
+        .ownerId(deletedGroupOwnerId)
+        .build();
+    groupMapper.insert(activeGroup);
+    groupMapper.insert(deletedGroup);
+
+    groupMapper.insertMember(activeGroup.getGroupId(), ownerId);
+    groupMapper.insertMember(activeGroup.getGroupId(), memberId);
+    groupMapper.insertMember(activeGroup.getGroupId(), activeTeammateId);
+    groupMapper.insertMember(activeGroup.getGroupId(), deletedTeammateId);
+    groupMapper.insertMember(deletedGroup.getGroupId(), memberId);
+    groupMapper.insertMember(deletedGroup.getGroupId(), deletedGroupMemberId);
+
+    softDeleteUser(deletedTeammateId);
+    softDeleteGroup(deletedGroup.getGroupId());
+
+    assertThat(groupMapper.findMembersByMemberId(memberId))
+        .containsExactlyInAnyOrder(activeTeammateId, memberId, ownerId);
+  }
+
   private Long insertUser(String email, String nickname) {
     jdbcTemplate.update(
         """
@@ -219,6 +288,20 @@ class GroupMapperTest {
     );
     assertThat(count).isNotNull();
     return count;
+  }
+
+  private void softDeleteUser(Long userId) {
+    jdbcTemplate.update(
+        "UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+        userId
+    );
+  }
+
+  private void softDeleteGroup(Long groupId) {
+    jdbcTemplate.update(
+        "UPDATE user_groups SET deleted_at = CURRENT_TIMESTAMP WHERE group_id = ?",
+        groupId
+    );
   }
 
   private String uniqueEmail(String prefix) {

@@ -77,4 +77,18 @@
     WHERE user_id = #{userId}
   </select>
 
+  <select id="findMembersByMemberId" parameterType="long" resultType="long">
+    SELECT gm.user_id
+    FROM group_members gm
+           JOIN user_groups ug ON ug.group_id = gm.group_id
+           JOIN users u ON u.user_id = gm.user_id
+    WHERE gm.group_id IN (SELECT my_group.group_id
+                          FROM group_members my_group
+                                 JOIN user_groups my_ug ON my_ug.group_id = my_group.group_id
+                          WHERE my_group.user_id = #{memberId}
+                            AND my_ug.deleted_at IS NULL)
+      AND ug.deleted_at IS NULL
+      AND u.deleted_at IS NULL
+  </select>
+
 </mapper>
