@@ -37,6 +37,17 @@ CREATE TABLE post_images (
         FOREIGN KEY (post_id) REFERENCES posts (post_id)
 );
 
+CREATE TABLE post_likes (
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (post_id, user_id),
+    CONSTRAINT fk_post_likes_post_id
+        FOREIGN KEY (post_id) REFERENCES posts (post_id),
+    CONSTRAINT fk_post_likes_user_id
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
+);
+
 CREATE TABLE hashtag (
     hashtag_id BIGINT NOT NULL AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,

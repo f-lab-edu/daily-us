@@ -59,6 +59,28 @@ class PostMapperTest {
   }
 
   @Test
+  void postLikeQueriesInsertDeleteAndUpdateCount() throws Exception {
+    Long userId = insertUser("post-like-user@example.com", "post-like-user");
+    Long postId = insertPost(userId, "liked post");
+
+    assertThat(postMapper.existsActiveById(postId)).isTrue();
+    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isZero();
+
+    postMapper.insertLike(postId, userId);
+    postMapper.incrementLikeCount(postId);
+
+    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isEqualTo(1);
+    assertThat(countPostLikes(postId, userId)).isEqualTo(1);
+    assertThat(findPostLikeCount(postId)).isEqualTo(1L);
+
+    assertThat(postMapper.deleteLike(postId, userId)).isEqualTo(1);
+    postMapper.decrementLikeCount(postId);
+
+    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isZero();
+    assertThat(findPostLikeCount(postId)).isZero();
+  }
+
+  @Test
   void findFeedPostsReturnsPostsFromFolloweesAndGroupMembers() throws Exception {
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
     Long followeeId = insertUser(uniqueEmail("followee"), uniqueNickname("followee"));
@@ -358,6 +380,33 @@ class PostMapperTest {
       try (ResultSet resultSet = statement.executeQuery()) {
         resultSet.next();
         return resultSet.getInt(1);
+      }
+    }
+  }
+
+  private int countPostLikes(Long postId, Long userId) throws Exception {
+    Connection connection = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = connection.prepareStatement(
+        "SELECT COUNT(*) FROM post_likes WHERE post_id = ? AND user_id = ?"
+    )) {
+      statement.setLong(1, postId);
+      statement.setLong(2, userId);
+      try (ResultSet resultSet = statement.executeQuery()) {
+        resultSet.next();
+        return resultSet.getInt(1);
+      }
+    }
+  }
+
+  private Long findPostLikeCount(Long postId) throws Exception {
+    Connection connection = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = connection.prepareStatement(
+        "SELECT like_count FROM posts WHERE post_id = ?"
+    )) {
+      statement.setLong(1, postId);
+      try (ResultSet resultSet = statement.executeQuery()) {
+        resultSet.next();
+        return resultSet.getLong(1);
       }
     }
   }
