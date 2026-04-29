@@ -137,4 +137,59 @@
         </foreach>
     </insert>
 
+    <select id="existsActiveById" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM posts
+            WHERE post_id = #{postId}
+              AND deleted_at IS NULL
+        )
+    </select>
+
+    <select id="countLikesByPostIdAndUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM post_likes
+        WHERE post_id = #{postId}
+          AND user_id = #{userId}
+    </select>
+
+    <insert id="insertLike">
+        INSERT INTO post_likes (
+            post_id,
+            user_id
+        ) VALUES (
+            #{postId},
+            #{userId}
+        )
+    </insert>
+
+    <delete id="deleteLike">
+        DELETE
+        FROM post_likes
+        WHERE post_id = #{postId}
+          AND user_id = #{userId}
+    </delete>
+
+    <update id="incrementLikeCount">
+        UPDATE posts
+        SET like_count = like_count + 1
+        WHERE post_id = #{postId}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="decrementLikeCount">
+        UPDATE posts
+        SET like_count = like_count - 1
+        WHERE post_id = #{postId}
+          AND deleted_at IS NULL
+          AND like_count > 0
+    </update>
+
+    <select id="findLikeCountByPostId" resultType="long">
+        SELECT like_count
+        FROM posts
+        WHERE post_id = #{postId}
+          AND deleted_at IS NULL
+    </select>
+
 </mapper>
