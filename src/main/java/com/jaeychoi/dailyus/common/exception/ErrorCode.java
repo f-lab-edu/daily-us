@@ -22,8 +22,12 @@ public enum ErrorCode {
   FOLLOW_ALREADY_EXISTS(HttpStatus.CONFLICT, "USR_005", "Follow relationship already exists."),
   FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "USR_006", "Follow relationship not found."),
   POST_IMAGE_REQUIRED(HttpStatus.BAD_REQUEST, "PST_001", "At least one image is required."),
+  POST_NOT_FOUND(HttpStatus.NOT_FOUND, "PST_002", "Post not found."),
   POST_HASHTAG_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "PST_003",
-      "No more than 10 hashtags are allowed.");
+      "No more than 10 hashtags are allowed."),
+  POST_LIKE_ALREADY_EXISTS(HttpStatus.CONFLICT, "PST_004",
+      "Post like already exists."),
+  POST_LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "PST_005", "Post like not found.");
 
   private final HttpStatus status;
   private final String code;
