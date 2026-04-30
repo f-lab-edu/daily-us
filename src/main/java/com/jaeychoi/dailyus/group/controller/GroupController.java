@@ -7,11 +7,14 @@ import com.jaeychoi.dailyus.common.web.ApiResponse;
 import com.jaeychoi.dailyus.group.dto.GroupCreateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
+import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
+import com.jaeychoi.dailyus.group.service.GroupRankService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,6 +29,7 @@ public class GroupController {
 
   private final GroupCreateService groupCreateService;
   private final GroupJoinService groupJoinService;
+  private final GroupRankService groupRankService;
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
@@ -45,4 +49,10 @@ public class GroupController {
     return ApiResponse.success(response);
   }
 
+  @GetMapping("/{groupId}/rank")
+  @AuthRequired
+  public ApiResponse<GroupRankResponse> getRank(@PathVariable Long groupId, @AuthenticatedUser CurrentUser user) {
+    GroupRankResponse response = groupRankService.getRank(groupId, user.userId());
+    return ApiResponse.success(response);
+  }
 }

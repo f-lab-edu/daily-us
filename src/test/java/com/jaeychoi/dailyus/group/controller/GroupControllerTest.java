@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.group.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,8 +17,11 @@ import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
 import com.jaeychoi.dailyus.group.dto.GroupCreateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
+import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
+import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
+import com.jaeychoi.dailyus.group.service.GroupRankService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +43,9 @@ class GroupControllerTest {
   @Mock
   private GroupJoinService groupJoinService;
 
+  @Mock
+  private GroupRankService groupRankService;
+
   private MockMvc mockMvc;
 
   private ObjectMapper objectMapper;
@@ -50,7 +57,7 @@ class GroupControllerTest {
 
     objectMapper = new ObjectMapper();
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new GroupController(groupCreateService, groupJoinService))
+            new GroupController(groupCreateService, groupJoinService, groupRankService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
@@ -181,4 +188,37 @@ class GroupControllerTest {
         .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_ALREADY_JOINED.getMessage()))
         .andExpect(jsonPath("$.data").doesNotExist());
   }
+
+  @Test
+  void getRankReturnsOkResponse() throws Exception {
+    GroupRankResponse response = new GroupRankResponse(
+        1L,
+        java.util.List.of(
+            new GroupMemberRankRow(1, 2L, "tester", "https://example.com/tester.png", 3L)
+        )
+    );
+    when(groupRankService.getRank(1L, 2L)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/groups/1/rank")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.groupId").value(1L))
+        .andExpect(jsonPath("$.data.rank[0].rank").value(1))
+        .andExpect(jsonPath("$.data.rank[0].userId").value(2L))
+        .andExpect(jsonPath("$.data.rank[0].nickname").value("tester"))
+        .andExpect(jsonPath("$.data.rank[0].postCount").value(3L));
+  }
+
+  @Test
+  void getRankReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(get("/api/v1/groups/1/rank"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
 }
