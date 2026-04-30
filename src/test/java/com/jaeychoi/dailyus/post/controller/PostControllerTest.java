@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.post.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -17,8 +18,10 @@ import com.jaeychoi.dailyus.post.dto.PostCreateRequest;
 import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedItemResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
+import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
 import com.jaeychoi.dailyus.post.service.PostCreateService;
 import com.jaeychoi.dailyus.post.service.PostFeedService;
+import com.jaeychoi.dailyus.post.service.PostLikeService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +45,9 @@ class PostControllerTest {
   @Mock
   private PostFeedService postFeedService;
 
+  @Mock
+  private PostLikeService postLikeService;
+
   private MockMvc mockMvc;
   private ObjectMapper objectMapper;
 
@@ -50,7 +56,8 @@ class PostControllerTest {
     LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
     validator.afterPropertiesSet();
 
-    mockMvc = MockMvcBuilders.standaloneSetup(new PostController(postCreateService, postFeedService))
+    mockMvc = MockMvcBuilders.standaloneSetup(
+            new PostController(postCreateService, postFeedService, postLikeService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
@@ -166,6 +173,43 @@ class PostControllerTest {
   @Test
   void getFeedReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
     mockMvc.perform(get("/api/v1/posts"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void likePostReturnsCreatedResponse() throws Exception {
+    when(postLikeService.like(1L, 10L)).thenReturn(new PostLikeResponse(10L, true, 3L));
+
+    mockMvc.perform(post("/api/v1/posts/10/like")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.postId").value(10L))
+        .andExpect(jsonPath("$.data.liked").value(true))
+        .andExpect(jsonPath("$.data.likeCount").value(3L));
+  }
+
+  @Test
+  void unlikePostReturnsOkResponse() throws Exception {
+    when(postLikeService.unlike(1L, 10L)).thenReturn(new PostLikeResponse(10L, false, 2L));
+
+    mockMvc.perform(delete("/api/v1/posts/10/like")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.postId").value(10L))
+        .andExpect(jsonPath("$.data.liked").value(false))
+        .andExpect(jsonPath("$.data.likeCount").value(2L));
+  }
+
+  @Test
+  void likePostReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(post("/api/v1/posts/10/like"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))

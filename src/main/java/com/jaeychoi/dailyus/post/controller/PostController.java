@@ -7,14 +7,18 @@ import com.jaeychoi.dailyus.common.web.ApiResponse;
 import com.jaeychoi.dailyus.post.dto.PostCreateRequest;
 import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
+import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
 import com.jaeychoi.dailyus.post.service.PostCreateService;
 import com.jaeychoi.dailyus.post.service.PostFeedService;
+import com.jaeychoi.dailyus.post.service.PostLikeService;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,6 +33,7 @@ public class PostController {
 
   private final PostCreateService postCreateService;
   private final PostFeedService postFeedService;
+  private final PostLikeService postLikeService;
 
   @GetMapping
   @AuthRequired
@@ -47,5 +52,20 @@ public class PostController {
   public ApiResponse<PostCreateResponse> createPost(@AuthenticatedUser CurrentUser user,
       @Valid @RequestBody PostCreateRequest request) {
     return ApiResponse.success(postCreateService.createPost(user.userId(), request));
+  }
+
+  @PostMapping("/{postId}/like")
+  @ResponseStatus(HttpStatus.CREATED)
+  @AuthRequired
+  public ApiResponse<PostLikeResponse> likePost(@AuthenticatedUser CurrentUser user,
+      @PathVariable Long postId) {
+    return ApiResponse.success(postLikeService.like(user.userId(), postId));
+  }
+
+  @DeleteMapping("/{postId}/like")
+  @AuthRequired
+  public ApiResponse<PostLikeResponse> unlikePost(@AuthenticatedUser CurrentUser user,
+      @PathVariable Long postId) {
+    return ApiResponse.success(postLikeService.unlike(user.userId(), postId));
   }
 }
