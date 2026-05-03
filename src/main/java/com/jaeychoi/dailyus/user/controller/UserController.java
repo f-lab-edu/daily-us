@@ -5,9 +5,12 @@ import com.jaeychoi.dailyus.auth.annotation.AuthenticatedUser;
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
 import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
+import com.jaeychoi.dailyus.user.dto.UserProfileResponse;
 import com.jaeychoi.dailyus.user.service.UserFollowService;
+import com.jaeychoi.dailyus.user.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,6 +24,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
   private final UserFollowService userFollowService;
+  private final UserProfileService userProfileService;
+
+  @GetMapping("/me")
+  @AuthRequired
+  public ApiResponse<UserProfileResponse> getMyProfile(@AuthenticatedUser CurrentUser user) {
+    return ApiResponse.success(userProfileService.getProfile(user.userId()));
+  }
 
   @PostMapping("/{userId}/follow")
   @ResponseStatus(HttpStatus.CREATED)
