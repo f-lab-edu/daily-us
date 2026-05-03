@@ -21,6 +21,7 @@ public enum ErrorCode {
   SELF_FOLLOW_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "USR_004", "You cannot follow yourself."),
   FOLLOW_ALREADY_EXISTS(HttpStatus.CONFLICT, "USR_005", "Follow relationship already exists."),
   FOLLOW_NOT_FOUND(HttpStatus.NOT_FOUND, "USR_006", "Follow relationship not found."),
+  INVALID_ACTIVITY_PERIOD(HttpStatus.BAD_REQUEST, "USR_007", "Activity period is invalid."),
   POST_IMAGE_REQUIRED(HttpStatus.BAD_REQUEST, "PST_001", "At least one image is required."),
   POST_HASHTAG_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "PST_003",
       "No more than 10 hashtags are allowed.");
