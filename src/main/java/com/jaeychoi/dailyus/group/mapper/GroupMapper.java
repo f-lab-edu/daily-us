@@ -1,6 +1,8 @@
 package com.jaeychoi.dailyus.group.mapper;
 
 import com.jaeychoi.dailyus.group.domain.Group;
+import com.jaeychoi.dailyus.user.dto.UserGroupItemResponse;
+import java.util.List;
 import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,4 +27,6 @@ public interface GroupMapper {
       LocalDateTime endAt);
 
   List<Long> findMembersByMemberId(Long memberId);
+
+  List<UserGroupItemResponse> findJoinedGroupsByUserId(Long userId);
 }
