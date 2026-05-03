@@ -1,6 +1,8 @@
 package com.jaeychoi.dailyus.group.mapper;
 
 import com.jaeychoi.dailyus.group.domain.Group;
+import com.jaeychoi.dailyus.user.dto.UserGroupItemResponse;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
@@ -17,4 +19,6 @@ public interface GroupMapper {
   boolean existsMemberByIdAndMemberId(Long groupId, Long userId);
 
   int countJoinedGroupsByMemberId(Long userId);
+
+  List<UserGroupItemResponse> findJoinedGroupsByUserId(Long userId);
 }

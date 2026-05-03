@@ -77,4 +77,17 @@
     WHERE user_id = #{userId}
   </select>
 
+  <select id="findJoinedGroupsByUserId"
+    parameterType="long"
+    resultType="com.jaeychoi.dailyus.user.dto.UserGroupItemResponse">
+    SELECT g.group_id,
+           g.name,
+           g.group_image
+    FROM group_members gm
+             INNER JOIN user_groups g
+                        ON gm.group_id = g.group_id
+    WHERE gm.user_id = #{userId}
+      AND g.deleted_at IS NULL
+  </select>
+
 </mapper>
