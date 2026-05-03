@@ -211,6 +211,33 @@ class PostMapperTest {
         );
   }
 
+  @Test
+  void findActivityDaysByUserIdReturnsDistinctDaysWithinMonth() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long otherUserId = insertUser(uniqueEmail("other"), uniqueNickname("other"));
+    Long firstPostId = insertPost(userId, "march 10 first");
+    Long secondPostId = insertPost(userId, "march 10 second");
+    Long thirdPostId = insertPost(userId, "march 12");
+    Long deletedPostId = insertPost(userId, "deleted march 11");
+    Long aprilPostId = insertPost(userId, "april 1");
+    Long otherUserPostId = insertPost(otherUserId, "other user march 15");
+    updatePostCreatedAt(firstPostId, LocalDateTime.of(2026, 3, 10, 9, 0));
+    updatePostCreatedAt(secondPostId, LocalDateTime.of(2026, 3, 10, 20, 0));
+    updatePostCreatedAt(thirdPostId, LocalDateTime.of(2026, 3, 12, 8, 0));
+    updatePostCreatedAt(deletedPostId, LocalDateTime.of(2026, 3, 11, 7, 0));
+    updatePostCreatedAt(aprilPostId, LocalDateTime.of(2026, 4, 1, 10, 0));
+    updatePostCreatedAt(otherUserPostId, LocalDateTime.of(2026, 3, 15, 10, 0));
+    softDeletePost(deletedPostId);
+
+    List<Integer> activityDays = postMapper.findActivityDaysByUserId(
+        userId,
+        LocalDateTime.of(2026, 3, 1, 0, 0),
+        LocalDateTime.of(2026, 4, 1, 0, 0)
+    );
+
+    assertThat(activityDays).containsExactly(10, 12);
+  }
+
   private Long insertUser(String email, String nickname) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
@@ -332,6 +359,16 @@ class PostMapperTest {
         )) {
       statement.setTimestamp(1, Timestamp.valueOf(createdAt));
       statement.setLong(2, postId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void softDeletePost(Long postId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE posts SET deleted_at = CURRENT_TIMESTAMP WHERE post_id = ?"
+        )) {
+      statement.setLong(1, postId);
       statement.executeUpdate();
     }
   }
