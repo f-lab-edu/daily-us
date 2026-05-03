@@ -2,6 +2,7 @@ package com.jaeychoi.dailyus.user.controller;
 
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -14,13 +15,14 @@ import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.common.exception.GlobalExceptionHandler;
 import com.jaeychoi.dailyus.common.web.AuthRequestAttributes;
 import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
-import com.jaeychoi.dailyus.post.dto.PostFeedItemResponse;
-import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
+import com.jaeychoi.dailyus.user.dto.UserActivityResponse;
 import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
 import com.jaeychoi.dailyus.user.dto.UserGroupItemResponse;
 import com.jaeychoi.dailyus.user.dto.UserGroupResponse;
 import com.jaeychoi.dailyus.user.dto.UserProfileResponse;
 import com.jaeychoi.dailyus.user.service.UserFollowService;
+import com.jaeychoi.dailyus.user.service.UserActivityService;
+import java.util.List;
 import com.jaeychoi.dailyus.user.service.UserMyGroupService;
 import com.jaeychoi.dailyus.user.service.UserPostService;
 import com.jaeychoi.dailyus.user.service.UserProfileService;
@@ -42,6 +44,9 @@ class UserControllerTest {
   private UserFollowService userFollowService;
 
   @Mock
+  private UserActivityService userActivityService;
+
+  @Mock
   private UserMyGroupService userMyGroupService;
 
   @Mock
@@ -55,8 +60,7 @@ class UserControllerTest {
   @BeforeEach
   void setUp() {
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new UserController(userFollowService, userMyGroupService, userProfileService,
-                userPostService))
+            new UserController(userFollowService, userActivityService, userMyGroupService, userProfileService, userPostService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
@@ -194,6 +198,33 @@ class UserControllerTest {
   @Test
   void getMyProfileReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
     mockMvc.perform(get("/api/v1/users/me"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void getMyActivitiesReturnsOkResponse() throws Exception {
+    UserActivityResponse response = new UserActivityResponse(2026, 3, List.of(10, 11, 12));
+    when(userActivityService.getMyActivities(1L, 2026, 3)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/users/me/activities")
+            .queryParam("year", "2026")
+            .queryParam("month", "3")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.year").value(2026))
+        .andExpect(jsonPath("$.data.month").value(3))
+        .andExpect(jsonPath("$.data.activityDays[0]").value(10))
+        .andExpect(jsonPath("$.data.activityDays[2]").value(12));
+  }
+
+  @Test
+  void getMyActivitiesReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(get("/api/v1/users/me/activities"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
