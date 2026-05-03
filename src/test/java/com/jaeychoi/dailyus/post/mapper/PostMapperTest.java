@@ -376,9 +376,10 @@ class PostMapperTest {
                     nickname,
                     follower_count,
                     followee_count,
+                    intro,
                     profile_image,
                     deleted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
             new String[]{"user_id"}
         )) {
@@ -388,7 +389,8 @@ class PostMapperTest {
       statement.setLong(4, 0L);
       statement.setLong(5, 0L);
       statement.setString(6, null);
-      statement.setTimestamp(7, null);
+      statement.setString(7, null);
+      statement.setTimestamp(8, null);
       statement.executeUpdate();
 
       try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
