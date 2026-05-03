@@ -2,6 +2,7 @@ package com.jaeychoi.dailyus.user.controller;
 
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -14,7 +15,9 @@ import com.jaeychoi.dailyus.common.exception.GlobalExceptionHandler;
 import com.jaeychoi.dailyus.common.web.AuthRequestAttributes;
 import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
 import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
+import com.jaeychoi.dailyus.user.dto.UserProfileResponse;
 import com.jaeychoi.dailyus.user.service.UserFollowService;
+import com.jaeychoi.dailyus.user.service.UserProfileService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,15 +33,57 @@ class UserControllerTest {
   @Mock
   private UserFollowService userFollowService;
 
+  @Mock
+  private UserProfileService userProfileService;
+
   private MockMvc mockMvc;
 
   @BeforeEach
   void setUp() {
-    mockMvc = MockMvcBuilders.standaloneSetup(new UserController(userFollowService))
+    mockMvc = MockMvcBuilders.standaloneSetup(new UserController(userFollowService,
+            userProfileService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
         .build();
+  }
+
+  @Test
+  void getMyProfileReturnsOkResponse() throws Exception {
+    UserProfileResponse response = new UserProfileResponse(
+        1L,
+        "user@example.com",
+        "dailyus",
+        "운동 기록 중입니다.",
+        "https://cdn.example.com/profile.png",
+        3L,
+        7L,
+        5L
+    );
+    when(userProfileService.getProfile(1L)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/users/me")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.userId").value(1L))
+        .andExpect(jsonPath("$.data.email").value("user@example.com"))
+        .andExpect(jsonPath("$.data.nickname").value("dailyus"))
+        .andExpect(jsonPath("$.data.intro").value("운동 기록 중입니다."))
+        .andExpect(jsonPath("$.data.profileImage").value("https://cdn.example.com/profile.png"))
+        .andExpect(jsonPath("$.data.followerCount").value(3L))
+        .andExpect(jsonPath("$.data.followeeCount").value(7L))
+        .andExpect(jsonPath("$.data.postCount").value(5L));
+  }
+
+  @Test
+  void getMyProfileReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(get("/api/v1/users/me"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
   }
 
   @Test
