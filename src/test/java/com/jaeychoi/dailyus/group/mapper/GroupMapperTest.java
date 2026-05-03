@@ -164,15 +164,17 @@ class GroupMapperTest {
                 nickname,
                 follower_count,
                 followee_count,
+                intro,
                 profile_image,
                 deleted_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
         email,
         "encoded-password",
         nickname,
         0L,
         0L,
+        null,
         null,
         null
     );

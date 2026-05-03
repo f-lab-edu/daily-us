@@ -87,9 +87,10 @@ class UserMapperTest {
                     nickname,
                     follower_count,
                     followee_count,
+                    intro,
                     profile_image,
                     deleted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
             PreparedStatement.RETURN_GENERATED_KEYS
         )) {
@@ -99,7 +100,8 @@ class UserMapperTest {
       statement.setLong(4, 0L);
       statement.setLong(5, 0L);
       statement.setString(6, null);
-      statement.setTimestamp(7, deletedAt == null ? null : Timestamp.valueOf(deletedAt));
+      statement.setString(7, null);
+      statement.setTimestamp(8, deletedAt == null ? null : Timestamp.valueOf(deletedAt));
       statement.executeUpdate();
 
       try (var generatedKeys = statement.getGeneratedKeys()) {

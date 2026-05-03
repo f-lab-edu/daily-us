@@ -65,9 +65,10 @@ class UserFollowMapperTest {
                     nickname,
                     follower_count,
                     followee_count,
+                    intro,
                     profile_image,
                     deleted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
             new String[]{"user_id"}
         )) {
@@ -77,7 +78,8 @@ class UserFollowMapperTest {
       statement.setLong(4, 0L);
       statement.setLong(5, 0L);
       statement.setString(6, null);
-      statement.setTimestamp(7, null);
+      statement.setString(7, null);
+      statement.setTimestamp(8, null);
       statement.executeUpdate();
 
       try (var generatedKeys = statement.getGeneratedKeys()) {

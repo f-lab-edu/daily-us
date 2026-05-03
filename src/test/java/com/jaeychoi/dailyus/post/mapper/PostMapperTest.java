@@ -59,6 +59,20 @@ class PostMapperTest {
   }
 
   @Test
+  void countActiveByUserIdCountsOnlyNonDeletedPosts() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long otherUserId = insertUser(uniqueEmail("other"), uniqueNickname("other"));
+    Long activePostId = insertPost(userId, "active post");
+    Long deletedPostId = insertPost(userId, "deleted post");
+    insertPost(otherUserId, "other user post");
+    softDeletePost(deletedPostId);
+
+    long count = postMapper.countActiveByUserId(userId);
+
+    assertThat(count).isEqualTo(1L);
+  }
+
+  @Test
   void findFeedPostsReturnsPostsFromFolloweesAndGroupMembers() throws Exception {
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
     Long followeeId = insertUser(uniqueEmail("followee"), uniqueNickname("followee"));
@@ -221,9 +235,10 @@ class PostMapperTest {
                     nickname,
                     follower_count,
                     followee_count,
+                    intro,
                     profile_image,
                     deleted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
             new String[]{"user_id"}
         )) {
@@ -233,7 +248,8 @@ class PostMapperTest {
       statement.setLong(4, 0L);
       statement.setLong(5, 0L);
       statement.setString(6, null);
-      statement.setTimestamp(7, null);
+      statement.setString(7, null);
+      statement.setTimestamp(8, null);
       statement.executeUpdate();
 
       try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
@@ -332,6 +348,16 @@ class PostMapperTest {
         )) {
       statement.setTimestamp(1, Timestamp.valueOf(createdAt));
       statement.setLong(2, postId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void softDeletePost(Long postId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE posts SET deleted_at = CURRENT_TIMESTAMP WHERE post_id = ?"
+        )) {
+      statement.setLong(1, postId);
       statement.executeUpdate();
     }
   }
