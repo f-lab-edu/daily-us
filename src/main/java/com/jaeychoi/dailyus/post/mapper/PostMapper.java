@@ -20,5 +20,7 @@ public interface PostMapper {
 
   List<PostFeedRow> findRecentFeedPosts(Long size, LocalDateTime createdAt, Long postId);
 
+  List<Integer> findActivityDaysByUserId(Long userId, LocalDateTime startAt, LocalDateTime endAt);
+
   List<PostImageRow> findImagesByPostIds(List<Long> postIds);
 }

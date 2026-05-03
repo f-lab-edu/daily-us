@@ -97,6 +97,17 @@
         LIMIT #{size}
     </select>
 
+    <select id="findActivityDaysByUserId" resultType="int">
+      SELECT DAY(p.created_at) AS activity_day
+      FROM posts p
+      WHERE p.user_id = #{userId}
+        AND p.deleted_at IS NULL
+        AND p.created_at >= #{startAt}
+        AND p.created_at &lt; #{endAt}
+      GROUP BY DAY(p.created_at)
+      ORDER BY activity_day
+    </select>
+
     <select id="findImagesByPostIds" resultMap="postImageRowResultMap">
       SELECT i.post_id,
       i.image_url
