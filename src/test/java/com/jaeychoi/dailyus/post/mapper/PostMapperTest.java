@@ -189,6 +189,53 @@ class PostMapperTest {
   }
 
   @Test
+  void findPostsReturnsOnlyActivePostsByUserIdOfUserOrderedByCreatedAtDescThenPostIdDesc() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long otherUserId = insertUser(uniqueEmail("other"), uniqueNickname("other"));
+    Long olderPostId = insertPost(userId, "older post");
+    Long sameTimeLowerPostId = insertPost(userId, "same-time lower");
+    Long sameTimeHigherPostId = insertPost(userId, "same-time higher");
+    Long deletedPostId = insertPost(userId, "deleted post");
+    insertPost(otherUserId, "other user post");
+    updatePostCreatedAt(olderPostId, LocalDateTime.of(2026, 5, 1, 8, 0));
+    LocalDateTime sameCreatedAt = LocalDateTime.of(2026, 5, 1, 9, 0);
+    updatePostCreatedAt(sameTimeLowerPostId, sameCreatedAt);
+    updatePostCreatedAt(sameTimeHigherPostId, sameCreatedAt);
+    updatePostCreatedAt(deletedPostId, LocalDateTime.of(2026, 5, 1, 10, 0));
+    softDeletePost(deletedPostId, LocalDateTime.of(2026, 5, 1, 11, 0));
+
+    List<PostFeedRow> rows = postMapper.findPostsByUserId(userId, 10L, null, null);
+
+    assertThat(rows).extracting(PostFeedRow::postId)
+        .containsSequence(sameTimeHigherPostId, sameTimeLowerPostId, olderPostId)
+        .doesNotContain(deletedPostId);
+    assertThat(rows).extracting(PostFeedRow::userId)
+        .containsOnly(userId);
+  }
+
+  @Test
+  void findPostsByUserIdReturnsRowsAfterCompositeCursor() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long olderPostId = insertPost(userId, "older post");
+    Long cursorPostId = insertPost(userId, "cursor post");
+    Long newerPostId = insertPost(userId, "newer post");
+    updatePostCreatedAt(olderPostId, LocalDateTime.of(2026, 5, 1, 8, 0));
+    updatePostCreatedAt(cursorPostId, LocalDateTime.of(2026, 5, 1, 9, 0));
+    updatePostCreatedAt(newerPostId, LocalDateTime.of(2026, 5, 1, 10, 0));
+
+    List<PostFeedRow> rows = postMapper.findPostsByUserId(
+        userId,
+        10L,
+        LocalDateTime.of(2026, 5, 1, 9, 0),
+        cursorPostId
+    );
+
+    assertThat(rows).extracting(PostFeedRow::postId)
+        .contains(olderPostId)
+        .doesNotContain(cursorPostId, newerPostId);
+  }
+
+  @Test
   void findImagesByPostIdsReturnsImagesGroupedInCreatedOrder() throws Exception {
     Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
     Long firstPostId = insertPost(userId, "first post");
@@ -331,6 +378,17 @@ class PostMapperTest {
             "UPDATE posts SET created_at = ? WHERE post_id = ?"
         )) {
       statement.setTimestamp(1, Timestamp.valueOf(createdAt));
+      statement.setLong(2, postId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void softDeletePost(Long postId, LocalDateTime deletedAt) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE posts SET deleted_at = ? WHERE post_id = ?"
+        )) {
+      statement.setTimestamp(1, Timestamp.valueOf(deletedAt));
       statement.setLong(2, postId);
       statement.executeUpdate();
     }
