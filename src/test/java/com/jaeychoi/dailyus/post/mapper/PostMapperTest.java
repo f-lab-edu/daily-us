@@ -59,6 +59,20 @@ class PostMapperTest {
   }
 
   @Test
+  void countActiveByUserIdCountsOnlyNonDeletedPosts() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long otherUserId = insertUser(uniqueEmail("other"), uniqueNickname("other"));
+    Long activePostId = insertPost(userId, "active post");
+    Long deletedPostId = insertPost(userId, "deleted post");
+    insertPost(otherUserId, "other user post");
+    softDeletePost(deletedPostId);
+
+    long count = postMapper.countActiveByUserId(userId);
+
+    assertThat(count).isEqualTo(1L);
+  }
+
+  @Test
   void postLikeQueriesInsertDeleteAndUpdateCount() throws Exception {
     Long userId = insertUser("post-like-user@example.com", "post-like-user");
     Long postId = insertPost(userId, "liked post");
@@ -477,6 +491,16 @@ class PostMapperTest {
         )) {
       statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.of(2026, 4, 24, 12, 0)));
       statement.setLong(2, groupId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void softDeletePost(Long postId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE posts SET deleted_at = CURRENT_TIMESTAMP WHERE post_id = ?"
+        )) {
+      statement.setLong(1, postId);
       statement.executeUpdate();
     }
   }
