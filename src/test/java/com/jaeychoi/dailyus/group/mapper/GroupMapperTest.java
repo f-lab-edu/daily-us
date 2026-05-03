@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.group.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jaeychoi.dailyus.group.domain.Group;
+import com.jaeychoi.dailyus.user.dto.UserGroupItemResponse;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
@@ -153,6 +154,46 @@ class GroupMapperTest {
 
     // then
     assertThat(findMemberCount(group.getGroupId())).isEqualTo(1);
+  }
+
+  @Test
+  void findJoinedGroupsByUserIdReturnsOnlyActiveJoinedGroups() {
+    // given
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Long secondOwnerId = insertUser(uniqueEmail("owner2"), uniqueNickname("owner2"));
+    Long memberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
+
+    Group activeGroup = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    Group deletedGroup = Group.builder()
+        .name("deleted-group")
+        .intro("group intro")
+        .groupImage("https://example.com/deleted.png")
+        .ownerId(secondOwnerId)
+        .build();
+
+    groupMapper.insert(activeGroup);
+    groupMapper.insert(deletedGroup);
+    groupMapper.insertMember(activeGroup.getGroupId(), memberId);
+    groupMapper.insertMember(deletedGroup.getGroupId(), memberId);
+    jdbcTemplate.update(
+        "UPDATE user_groups SET deleted_at = CURRENT_TIMESTAMP WHERE group_id = ?",
+        deletedGroup.getGroupId()
+    );
+
+    // when
+    var groups = groupMapper.findJoinedGroupsByUserId(memberId);
+
+    // then
+    assertThat(groups).hasSize(1);
+    UserGroupItemResponse group = groups.get(0);
+    assertThat(group.groupId()).isEqualTo(activeGroup.getGroupId());
+    assertThat(group.name()).isEqualTo("daily-us");
+    assertThat(group.groupImage()).isEqualTo("https://example.com/group.png");
   }
 
   private Long insertUser(String email, String nickname) {

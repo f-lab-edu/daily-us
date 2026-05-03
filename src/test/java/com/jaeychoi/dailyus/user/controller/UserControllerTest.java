@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.user.controller;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,7 +15,11 @@ import com.jaeychoi.dailyus.common.exception.GlobalExceptionHandler;
 import com.jaeychoi.dailyus.common.web.AuthRequestAttributes;
 import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
 import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
+import com.jaeychoi.dailyus.user.dto.UserGroupItemResponse;
+import com.jaeychoi.dailyus.user.dto.UserGroupResponse;
 import com.jaeychoi.dailyus.user.service.UserFollowService;
+import com.jaeychoi.dailyus.user.service.UserMyGroupService;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,15 +35,47 @@ class UserControllerTest {
   @Mock
   private UserFollowService userFollowService;
 
+  @Mock
+  private UserMyGroupService userMyGroupService;
+
   private MockMvc mockMvc;
 
   @BeforeEach
   void setUp() {
-    mockMvc = MockMvcBuilders.standaloneSetup(new UserController(userFollowService))
+    mockMvc = MockMvcBuilders.standaloneSetup(new UserController(userFollowService, userMyGroupService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
         .build();
+  }
+
+  @Test
+  void getMyGroupsReturnsOkResponse() throws Exception {
+    UserGroupResponse response = new UserGroupResponse(List.of(
+        new UserGroupItemResponse(10L, "daily-us", "https://example.com/group.png"),
+        new UserGroupItemResponse(11L, "backend-study", null)
+    ));
+    when(userMyGroupService.getMyGroups(1L)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/users/me/groups")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.items[0].groupId").value(10L))
+        .andExpect(jsonPath("$.data.items[0].name").value("daily-us"))
+        .andExpect(jsonPath("$.data.items[0].groupImage").value("https://example.com/group.png"))
+        .andExpect(jsonPath("$.data.items[1].groupId").value(11L))
+        .andExpect(jsonPath("$.data.items[1].name").value("backend-study"));
+  }
+
+  @Test
+  void getMyGroupsReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(get("/api/v1/users/me/groups"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
   }
 
   @Test
