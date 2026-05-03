@@ -16,6 +16,8 @@ public interface PostMapper {
 
   boolean existsFeedPosts(Long userId);
 
+  long countActiveByUserId(Long userId);
+
   List<PostFeedRow> findFeedPosts(Long userId, Long size, LocalDateTime createdAt, Long postId);
 
   List<PostFeedRow> findRecentFeedPosts(Long size, LocalDateTime createdAt, Long postId);
