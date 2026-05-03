@@ -5,9 +5,11 @@ import com.jaeychoi.dailyus.auth.annotation.AuthenticatedUser;
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
+import com.jaeychoi.dailyus.user.dto.UserActivityResponse;
 import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
 import com.jaeychoi.dailyus.user.dto.UserGroupResponse;
 import com.jaeychoi.dailyus.user.dto.UserProfileResponse;
+import com.jaeychoi.dailyus.user.service.UserActivityService;
 import com.jaeychoi.dailyus.user.service.UserFollowService;
 import com.jaeychoi.dailyus.user.service.UserMyGroupService;
 import com.jaeychoi.dailyus.user.service.UserPostService;
@@ -31,7 +33,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
   private final UserFollowService userFollowService;
+  private final UserActivityService userActivityService;
   private final UserMyGroupService userMyGroupService;
+
+  @GetMapping("/me/activities")
+  @AuthRequired
+  public ApiResponse<UserActivityResponse> getMyActivities(
+      @AuthenticatedUser CurrentUser user,
+      @RequestParam(required = false) Integer year,
+      @RequestParam(required = false) Integer month) {
+    UserActivityResponse response = userActivityService.getMyActivities(user.userId(), year, month);
+    return ApiResponse.success(response);
+  }
 
   @GetMapping("/me/groups")
   @AuthRequired
