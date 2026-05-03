@@ -44,6 +44,9 @@ class UserControllerTest {
   private UserFollowService userFollowService;
 
   @Mock
+  private UserProfileService userProfileService;
+
+  @Mock
   private UserActivityService userActivityService;
 
   @Mock
@@ -52,16 +55,13 @@ class UserControllerTest {
   @Mock
   private UserPostService userPostService;
 
-  @Mock
-  private UserProfileService userProfileService;
-
   private MockMvc mockMvc;
 
   @BeforeEach
   void setUp() {
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new UserController(userFollowService, userActivityService, userMyGroupService,
-                userProfileService, userPostService))
+            new UserController(userFollowService, userProfileService, userActivityService,
+                userMyGroupService, userPostService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
