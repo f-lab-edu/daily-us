@@ -20,5 +20,7 @@ public interface PostMapper {
 
   List<PostFeedRow> findRecentFeedPosts(Long size, LocalDateTime createdAt, Long postId);
 
+  List<PostFeedRow> findPostsByUserId(Long userId, Long size, LocalDateTime createdAt, Long postId);
+
   List<PostImageRow> findImagesByPostIds(List<Long> postIds);
 }

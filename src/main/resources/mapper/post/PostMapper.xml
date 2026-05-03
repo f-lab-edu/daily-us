@@ -97,6 +97,26 @@
         LIMIT #{size}
     </select>
 
+    <select id="findPostsByUserId" resultMap="postFeedRowResultMap">
+        SELECT p.post_id,
+               u.user_id,
+               u.nickname,
+               u.profile_image,
+               p.content,
+               p.like_count,
+               p.created_at
+        FROM posts p
+        JOIN users u ON u.user_id = p.user_id
+        WHERE p.user_id = #{userId}
+        AND p.deleted_at IS NULL
+        AND u.deleted_at IS NULL
+        <if test="createdAt != null and postId != null">
+            AND (p.created_at, p.post_id) &lt; (#{createdAt}, #{postId})
+        </if>
+        ORDER BY p.created_at DESC, p.post_id DESC
+        LIMIT #{size}
+    </select>
+
     <select id="findImagesByPostIds" resultMap="postImageRowResultMap">
       SELECT i.post_id,
       i.image_url
