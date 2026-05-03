@@ -33,8 +33,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
   private final UserFollowService userFollowService;
+  private final UserProfileService userProfileService;
   private final UserActivityService userActivityService;
   private final UserMyGroupService userMyGroupService;
+  private final UserPostService userPostService;
+
+  @GetMapping("/me")
+  @AuthRequired
+  public ApiResponse<UserProfileResponse> getMyProfile(@AuthenticatedUser CurrentUser user) {
+    return ApiResponse.success(userProfileService.getProfile(user.userId()));
+  }
 
   @GetMapping("/me/activities")
   @AuthRequired
@@ -52,16 +60,6 @@ public class UserController {
     UserGroupResponse response = userMyGroupService.getMyGroups(user.userId());
     return ApiResponse.success(response);
   }
-
-  private final UserProfileService userProfileService;
-
-  @GetMapping("/me")
-  @AuthRequired
-  public ApiResponse<UserProfileResponse> getMyProfile(@AuthenticatedUser CurrentUser user) {
-    return ApiResponse.success(userProfileService.getProfile(user.userId()));
-  }
-
-  private final UserPostService userPostService;
 
   @GetMapping("/me/posts")
   @AuthRequired
