@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jaeychoi.dailyus.comment.mapper.CommentMapper">
+
+    <resultMap id="commentRowResultMap" type="com.jaeychoi.dailyus.comment.dto.CommentRow">
+        <constructor>
+            <idArg column="comment_id" javaType="java.lang.Long"/>
+            <arg column="user_id" javaType="java.lang.Long"/>
+            <arg column="nickname" javaType="java.lang.String"/>
+            <arg column="profile_image" javaType="java.lang.String"/>
+            <arg column="content" javaType="java.lang.String"/>
+            <arg column="like_count" javaType="java.lang.Long"/>
+            <arg column="liked_by_me" javaType="java.lang.Boolean"/>
+            <arg column="created_at" javaType="java.time.LocalDateTime"/>
+            <arg column="parent_id" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+
+    <select id="existsActivePostById" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM posts p
+            WHERE p.post_id = #{postId}
+              AND p.deleted_at IS NULL
+        )
+    </select>
+
+    <select id="findComments" resultMap="commentRowResultMap">
+        SELECT c.comment_id,
+               u.user_id,
+               u.nickname,
+               u.profile_image,
+               c.content,
+               c.like_count,
+               EXISTS(
+                   SELECT 1
+                   FROM comment_likes cl
+                   WHERE cl.comment_id = c.comment_id
+                     AND cl.user_id = #{userId}
+               ) AS liked_by_me,
+               c.created_at,
+               c.parent_id
+        FROM comments c
+        JOIN users u ON u.user_id = c.user_id
+        WHERE c.post_id = #{postId}
+          AND c.parent_id IS NULL
+          AND c.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+        <if test="createdAt != null and commentId != null">
+            AND (c.created_at, c.comment_id) &lt; (#{createdAt}, #{commentId})
+        </if>
+        ORDER BY c.created_at DESC, c.comment_id DESC
+        LIMIT #{size}
+    </select>
+
+    <select id="findRepliesByParentIds" resultMap="commentRowResultMap">
+        SELECT c.comment_id,
+               u.user_id,
+               u.nickname,
+               u.profile_image,
+               c.content,
+               c.like_count,
+               EXISTS(
+                   SELECT 1
+                   FROM comment_likes cl
+                   WHERE cl.comment_id = c.comment_id
+                     AND cl.user_id = #{userId}
+               ) AS liked_by_me,
+               c.created_at,
+               c.parent_id
+        FROM comments c
+        JOIN users u ON u.user_id = c.user_id
+        WHERE c.parent_id IN
+        <foreach collection="parentIds" item="parentId" open="(" separator="," close=")">
+            #{parentId}
+        </foreach>
+          AND c.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+        ORDER BY c.parent_id, c.created_at DESC, c.comment_id DESC
+    </select>
+
+</mapper>
