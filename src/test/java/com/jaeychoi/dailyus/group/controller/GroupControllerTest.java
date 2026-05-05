@@ -16,10 +16,12 @@ import com.jaeychoi.dailyus.common.web.AuthRequestAttributes;
 import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
 import com.jaeychoi.dailyus.group.dto.GroupCreateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
+import com.jaeychoi.dailyus.group.dto.GroupDetailResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
 import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
 import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
+import com.jaeychoi.dailyus.group.service.GroupDetailService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
 import com.jaeychoi.dailyus.group.service.GroupRankService;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +41,9 @@ class GroupControllerTest {
 
   @Mock
   private GroupCreateService groupCreateService;
+
+  @Mock
+  private GroupDetailService groupDetailService;
 
   @Mock
   private GroupJoinService groupJoinService;
@@ -63,6 +68,42 @@ class GroupControllerTest {
         .setValidator(validator)
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
         .build();
+  }
+
+  @Test
+  void getGroupDetailReturnsOkResponse() throws Exception {
+    GroupDetailResponse response = new GroupDetailResponse(
+        1L,
+        "daily-us",
+        "group intro",
+        "https://example.com/group.png",
+        2L,
+        "owner",
+        10
+    );
+    when(groupDetailService.getDetail(1L)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/groups/1")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.groupId").value(1L))
+        .andExpect(jsonPath("$.data.name").value("daily-us"))
+        .andExpect(jsonPath("$.data.ownerNickname").value("owner"))
+        .andExpect(jsonPath("$.data.memberCount").value(10));
+  }
+
+  @Test
+  void getGroupDetailReturnsNotFoundWhenGroupDoesNotExist() throws Exception {
+    when(groupDetailService.getDetail(1L)).thenThrow(new BaseException(ErrorCode.GROUP_NOT_FOUND));
+
+    mockMvc.perform(get("/api/v1/groups/1"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value(ErrorCode.GROUP_NOT_FOUND.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_NOT_FOUND.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
   }
 
   @Test

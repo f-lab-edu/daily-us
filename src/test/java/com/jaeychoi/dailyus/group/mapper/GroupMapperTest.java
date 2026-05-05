@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.group.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jaeychoi.dailyus.group.domain.Group;
+import com.jaeychoi.dailyus.group.dto.GroupDetailRow;
 import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -258,6 +259,32 @@ class GroupMapperTest {
 
     assertThat(groupMapper.findMembersByMemberId(memberId))
         .containsExactlyInAnyOrder(activeTeammateId, memberId, ownerId);
+  }
+
+  @Test
+  void findDetailByIdReturnsActiveGroupDetailWithOwnerNickname() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    groupMapper.insert(group);
+    jdbcTemplate.update(
+        "UPDATE user_groups SET member_count = ? WHERE group_id = ?",
+        3,
+        group.getGroupId()
+    );
+
+    GroupDetailRow found = groupMapper.findDetailById(group.getGroupId());
+
+    assertThat(found).isNotNull();
+    assertThat(found.groupId()).isEqualTo(group.getGroupId());
+    assertThat(found.name()).isEqualTo("daily-us");
+    assertThat(found.ownerId()).isEqualTo(ownerId);
+    assertThat(found.ownerNickname()).isNotBlank();
+    assertThat(found.memberCount()).isEqualTo(3);
   }
 
   @Test
