@@ -6,6 +6,7 @@ import java.util.List;
 import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.jaeychoi.dailyus.group.dto.GroupDetailRow;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
@@ -18,6 +19,8 @@ public interface GroupMapper {
   void increaseMemberCount(Long groupId);
 
   Group findActiveById(Long groupId);
+
+  GroupDetailRow findDetailById(Long groupId);
 
   boolean existsMemberByIdAndMemberId(Long groupId, Long userId);
 
