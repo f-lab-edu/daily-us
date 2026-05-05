@@ -72,8 +72,8 @@ CREATE TABLE comments (
     post_id BIGINT NOT NULL,
     parent_id BIGINT NULL,
     PRIMARY KEY (comment_id),
-    INDEX idx_comments_post_id_created_at (post_id, created_at),
-    INDEX idx_comments_parent_id_created_at (parent_id, created_at),
+    INDEX idx_comments_post_parent_created_id (post_id, parent_id, created_at, comment_id),
+    INDEX idx_comments_parent_created_id (parent_id, created_at, comment_id),
     CONSTRAINT fk_comments_user_id
         FOREIGN KEY (user_id) REFERENCES users (user_id),
     CONSTRAINT fk_comments_post_id
