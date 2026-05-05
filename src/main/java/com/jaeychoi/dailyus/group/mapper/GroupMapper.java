@@ -1,6 +1,8 @@
 package com.jaeychoi.dailyus.group.mapper;
 
 import com.jaeychoi.dailyus.group.domain.Group;
+import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
+import java.util.List;
 import com.jaeychoi.dailyus.group.dto.GroupDetailRow;
 import com.jaeychoi.dailyus.group.dto.GroupListRow;
 import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
@@ -19,6 +21,8 @@ public interface GroupMapper {
   void increaseMemberCount(Long groupId);
 
   Group findActiveById(Long groupId);
+
+  List<GroupMemberResponse> findMembersByGroupId(Long groupId);
 
   GroupDetailRow findDetailById(Long groupId);
 
