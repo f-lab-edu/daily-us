@@ -16,6 +16,15 @@
     <result property="deletedAt" column="deleted_at"/>
   </resultMap>
 
+  <resultMap id="groupListRowResultMap" type="com.jaeychoi.dailyus.group.dto.GroupListRow">
+    <constructor>
+      <idArg column="group_id" javaType="java.lang.Long"/>
+      <arg column="name" javaType="java.lang.String"/>
+      <arg column="group_image" javaType="java.lang.String"/>
+      <arg column="created_at" javaType="java.time.LocalDateTime"/>
+    </constructor>
+  </resultMap>
+
   <insert id="insert"
     parameterType="com.jaeychoi.dailyus.group.domain.Group"
     useGeneratedKeys="true"
@@ -75,6 +84,20 @@
     SELECT COUNT(*)
     FROM group_members
     WHERE user_id = #{userId}
+  </select>
+
+  <select id="findGroupList" resultMap="groupListRowResultMap">
+    SELECT group_id,
+           name,
+           group_image,
+           created_at
+    FROM user_groups
+    WHERE deleted_at IS NULL
+    <if test="createdAt != null and groupId != null">
+      AND (created_at, group_id) &lt; (#{createdAt}, #{groupId})
+    </if>
+    ORDER BY created_at DESC, group_id DESC
+    LIMIT #{size}
   </select>
 
 </mapper>
