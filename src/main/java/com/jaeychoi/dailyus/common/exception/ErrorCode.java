@@ -27,7 +27,9 @@ public enum ErrorCode {
       "No more than 10 hashtags are allowed."),
   POST_LIKE_ALREADY_EXISTS(HttpStatus.CONFLICT, "PST_004",
       "Post like already exists."),
-  POST_LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "PST_005", "Post like not found.");
+  POST_LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "PST_005", "Post like not found."),
+  COMMENT_INVALID_CURSOR(HttpStatus.BAD_REQUEST, "CMT_001",
+      "Both createdAt and commentId must be provided together.");
 
   private final HttpStatus status;
   private final String code;
