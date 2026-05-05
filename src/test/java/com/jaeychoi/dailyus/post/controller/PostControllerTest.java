@@ -9,6 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
+import com.jaeychoi.dailyus.comment.dto.CommentResponse;
+import com.jaeychoi.dailyus.comment.dto.CommentResponseItem;
+import com.jaeychoi.dailyus.comment.service.CommentGetService;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.common.exception.GlobalExceptionHandler;
 import com.jaeychoi.dailyus.common.web.AuthRequestAttributes;
@@ -42,6 +45,9 @@ class PostControllerTest {
   @Mock
   private PostFeedService postFeedService;
 
+  @Mock
+  private CommentGetService commentGetService;
+
   private MockMvc mockMvc;
   private ObjectMapper objectMapper;
 
@@ -50,7 +56,8 @@ class PostControllerTest {
     LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
     validator.afterPropertiesSet();
 
-    mockMvc = MockMvcBuilders.standaloneSetup(new PostController(postCreateService, postFeedService))
+    mockMvc = MockMvcBuilders.standaloneSetup(
+            new PostController(postCreateService, postFeedService, commentGetService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
@@ -166,6 +173,91 @@ class PostControllerTest {
   @Test
   void getFeedReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
     mockMvc.perform(get("/api/v1/posts"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void getCommentsReturnsOkResponse() throws Exception {
+    CommentResponse response = new CommentResponse(
+        List.of(new CommentResponseItem(
+            101L,
+            2L,
+            "author",
+            "https://example.com/profile.png",
+            "comment",
+            5L,
+            true,
+            LocalDateTime.of(2026, 4, 6, 10, 0),
+            null,
+            List.of(new CommentResponseItem(
+                201L,
+                3L,
+                "replier",
+                null,
+                "reply",
+                1L,
+                false,
+                LocalDateTime.of(2026, 4, 6, 10, 30),
+                101L,
+                List.of()
+            ))
+        )),
+        LocalDateTime.of(2026, 4, 6, 10, 0),
+        101L,
+        true,
+        10L
+    );
+    when(commentGetService.getComments(10L, 1L, null, null, 10L)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/posts/10/comments")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.lastCreatedAt").value("2026-04-06T10:00:00"))
+        .andExpect(jsonPath("$.data.lastCommentId").value(101L))
+        .andExpect(jsonPath("$.data.hasNext").value(true))
+        .andExpect(jsonPath("$.data.items[0].commentId").value(101L))
+        .andExpect(jsonPath("$.data.items[0].likedByMe").value(true))
+        .andExpect(jsonPath("$.data.items[0].replies[0].commentId").value(201L));
+  }
+
+  @Test
+  void getCommentsPassesCursorAndSizeQueryParameters() throws Exception {
+    CommentResponse response = new CommentResponse(
+        List.of(),
+        LocalDateTime.of(2026, 4, 6, 8, 0),
+        99L,
+        true,
+        5L
+    );
+    when(commentGetService.getComments(
+        10L,
+        1L,
+        LocalDateTime.of(2026, 4, 6, 9, 0),
+        150L,
+        5L
+    )).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/posts/10/comments")
+            .queryParam("createdAt", "2026-04-06T09:00:00")
+            .queryParam("commentId", "150")
+            .queryParam("size", "5")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.lastCreatedAt").value("2026-04-06T08:00:00"))
+        .andExpect(jsonPath("$.data.lastCommentId").value(99L))
+        .andExpect(jsonPath("$.data.hasNext").value(true))
+        .andExpect(jsonPath("$.data.size").value(5L));
+  }
+
+  @Test
+  void getCommentsReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(get("/api/v1/posts/10/comments"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
