@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.group.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jaeychoi.dailyus.group.domain.Group;
+import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
@@ -153,6 +154,32 @@ class GroupMapperTest {
 
     // then
     assertThat(findMemberCount(group.getGroupId())).isEqualTo(1);
+  }
+
+  @Test
+  void findMembersByGroupIdReturnsActiveMembersOnly() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Long activeMemberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
+    Long deletedMemberId = insertUser(uniqueEmail("deleted"), uniqueNickname("deleted"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    groupMapper.insert(group);
+    groupMapper.insertMember(group.getGroupId(), ownerId);
+    groupMapper.insertMember(group.getGroupId(), activeMemberId);
+    groupMapper.insertMember(group.getGroupId(), deletedMemberId);
+    jdbcTemplate.update(
+        "UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+        deletedMemberId
+    );
+
+    var rows = groupMapper.findMembersByGroupId(group.getGroupId());
+
+    assertThat(rows).extracting(GroupMemberResponse::userId)
+        .containsExactly(ownerId, activeMemberId);
   }
 
   private Long insertUser(String email, String nickname) {

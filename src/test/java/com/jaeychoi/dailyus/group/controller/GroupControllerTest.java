@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.group.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,8 +17,11 @@ import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
 import com.jaeychoi.dailyus.group.dto.GroupCreateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
+import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
+import com.jaeychoi.dailyus.group.service.GroupMembersService;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +43,9 @@ class GroupControllerTest {
   @Mock
   private GroupJoinService groupJoinService;
 
+  @Mock
+  private GroupMembersService groupMembersService;
+
   private MockMvc mockMvc;
 
   private ObjectMapper objectMapper;
@@ -50,12 +57,38 @@ class GroupControllerTest {
 
     objectMapper = new ObjectMapper();
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new GroupController(groupCreateService, groupJoinService))
+            new GroupController(groupCreateService, groupJoinService, groupMembersService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
         .build();
+  }
+
+  @Test
+  void getGroupMembersReturnsOkResponse() throws Exception {
+    when(groupMembersService.getMembers(1L)).thenReturn(List.of(
+        new GroupMemberResponse(2L, "tester", "https://example.com/profile.png"),
+        new GroupMemberResponse(3L, "member", null)
+    ));
+
+    mockMvc.perform(get("/api/v1/groups/1/members"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data[0].userId").value(2L))
+        .andExpect(jsonPath("$.data[0].nickname").value("tester"))
+        .andExpect(jsonPath("$.data[1].userId").value(3L));
+  }
+
+  @Test
+  void getGroupMembersReturnsNotFoundWhenGroupDoesNotExist() throws Exception {
+    when(groupMembersService.getMembers(1L)).thenThrow(new BaseException(ErrorCode.GROUP_NOT_FOUND));
+
+    mockMvc.perform(get("/api/v1/groups/1/members"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value(ErrorCode.GROUP_NOT_FOUND.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_NOT_FOUND.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
   }
 
   @Test
