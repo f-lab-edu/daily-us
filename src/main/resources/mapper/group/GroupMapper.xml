@@ -16,6 +16,15 @@
     <result property="deletedAt" column="deleted_at"/>
   </resultMap>
 
+  <resultMap id="groupListRowResultMap" type="com.jaeychoi.dailyus.group.dto.GroupListRow">
+    <constructor>
+      <idArg column="group_id" javaType="java.lang.Long"/>
+      <arg column="name" javaType="java.lang.String"/>
+      <arg column="group_image" javaType="java.lang.String"/>
+      <arg column="created_at" javaType="java.time.LocalDateTime"/>
+    </constructor>
+  </resultMap>
+
   <resultMap id="groupDetailRowResultMap" type="com.jaeychoi.dailyus.group.dto.GroupDetailRow">
     <constructor>
       <idArg column="group_id" javaType="java.lang.Long"/>
@@ -96,7 +105,7 @@
            u.nickname AS owner_nickname,
            g.member_count
     FROM user_groups g
-    JOIN users u ON u.user_id = g.owner_id
+           JOIN users u ON u.user_id = g.owner_id
     WHERE g.group_id = #{groupId}
       AND g.deleted_at IS NULL
       AND u.deleted_at IS NULL
@@ -116,8 +125,7 @@
   </select>
 
   <select id="findMemberRanks" resultMap="groupMemberRankRowResultMap">
-    SELECT DENSE_RANK() OVER (ORDER BY ranked.post_count DESC) AS ranking,
-           ranked.user_id,
+    SELECT DENSE_RANK() OVER (ORDER BY ranked.post_count DESC) AS ranking, ranked.user_id,
            ranked.nickname,
            ranked.profile_image,
            ranked.post_count
@@ -150,6 +158,20 @@
       AND u.deleted_at IS NULL
   </select>
 
+  <select id="findGroupList" resultMap="groupListRowResultMap">
+    SELECT group_id,
+    name,
+    group_image,
+    created_at
+    FROM user_groups
+    WHERE deleted_at IS NULL
+    <if test="createdAt != null and groupId != null">
+      AND (created_at, group_id) &lt; (#{createdAt}, #{groupId})
+    </if>
+    ORDER BY created_at DESC, group_id DESC
+    LIMIT #{size}
+  </select>
+
   <select id="findJoinedGroupsByUserId"
     parameterType="long"
     resultType="com.jaeychoi.dailyus.user.dto.UserGroupItemResponse">
@@ -157,8 +179,8 @@
            g.name,
            g.group_image
     FROM group_members gm
-             INNER JOIN user_groups g
-                        ON gm.group_id = g.group_id
+           INNER JOIN user_groups g
+                      ON gm.group_id = g.group_id
     WHERE gm.user_id = #{userId}
       AND g.deleted_at IS NULL
   </select>
