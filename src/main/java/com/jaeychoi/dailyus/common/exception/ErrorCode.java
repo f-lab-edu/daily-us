@@ -17,6 +17,8 @@ public enum ErrorCode {
   GROUP_MEMBER_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "GRP_003", "Group is full."),
   GROUP_USER_JOIN_LIMIT(HttpStatus.CONFLICT, "GRP_004",
       "User has reached the maximum number of groups they can join."),
+  GROUP_INVALID_CURSOR(HttpStatus.BAD_REQUEST, "GRP_005",
+      "Both createdAt and groupId must be provided together."),
   USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USR_003", "User not found."),
   SELF_FOLLOW_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "USR_004", "You cannot follow yourself."),
   FOLLOW_ALREADY_EXISTS(HttpStatus.CONFLICT, "USR_005", "Follow relationship already exists."),
