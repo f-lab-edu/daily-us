@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.group.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -16,8 +17,13 @@ import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
 import com.jaeychoi.dailyus.group.dto.GroupCreateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
+import com.jaeychoi.dailyus.group.dto.GroupListItemResponse;
+import com.jaeychoi.dailyus.group.dto.GroupListResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
+import com.jaeychoi.dailyus.group.service.GroupListService;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +45,9 @@ class GroupControllerTest {
   @Mock
   private GroupJoinService groupJoinService;
 
+  @Mock
+  private GroupListService groupListService;
+
   private MockMvc mockMvc;
 
   private ObjectMapper objectMapper;
@@ -50,12 +59,77 @@ class GroupControllerTest {
 
     objectMapper = new ObjectMapper();
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new GroupController(groupCreateService, groupJoinService))
+            new GroupController(groupCreateService, groupJoinService, groupListService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
         .build();
+  }
+
+  @Test
+  void getGroupsReturnsOkResponse() throws Exception {
+    GroupListResponse response = new GroupListResponse(
+        List.of(
+            new GroupListItemResponse(
+                10L,
+                "group-10",
+                "https://example.com/10.png",
+                LocalDateTime.of(2026, 5, 5, 12, 0)
+            ),
+            new GroupListItemResponse(
+                9L,
+                "group-9",
+                "https://example.com/9.png",
+                LocalDateTime.of(2026, 5, 5, 11, 0)
+            )
+        ),
+        LocalDateTime.of(2026, 5, 5, 11, 0),
+        9L,
+        true,
+        2L
+    );
+    when(groupListService.getGroups(null, null, 2L)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/groups")
+            .queryParam("size", "2")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.items[0].groupId").value(10L))
+        .andExpect(jsonPath("$.data.items[0].name").value("group-10"))
+        .andExpect(jsonPath("$.data.lastCreatedAt").value("2026-05-05T11:00:00"))
+        .andExpect(jsonPath("$.data.lastGroupId").value(9L))
+        .andExpect(jsonPath("$.data.hasNext").value(true))
+        .andExpect(jsonPath("$.data.size").value(2L));
+  }
+
+  @Test
+  void getGroupsPassesCursorAndSizeQueryParameters() throws Exception {
+    GroupListResponse response = new GroupListResponse(
+        List.of(),
+        LocalDateTime.of(2026, 5, 5, 8, 0),
+        7L,
+        true,
+        5L
+    );
+    when(groupListService.getGroups(LocalDateTime.of(2026, 5, 5, 9, 0), 8L, 5L)).thenReturn(
+        response);
+
+    mockMvc.perform(get("/api/v1/groups")
+            .queryParam("createdAt", "2026-05-05T09:00:00")
+            .queryParam("groupId", "8")
+            .queryParam("size", "5")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.lastCreatedAt").value("2026-05-05T08:00:00"))
+        .andExpect(jsonPath("$.data.lastGroupId").value(7L))
+        .andExpect(jsonPath("$.data.hasNext").value(true))
+        .andExpect(jsonPath("$.data.size").value(5L));
   }
 
   @Test
