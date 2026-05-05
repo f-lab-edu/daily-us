@@ -7,11 +7,15 @@ import com.jaeychoi.dailyus.common.web.ApiResponse;
 import com.jaeychoi.dailyus.group.dto.GroupCreateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
+import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
+import com.jaeychoi.dailyus.group.service.GroupMembersService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,6 +30,13 @@ public class GroupController {
 
   private final GroupCreateService groupCreateService;
   private final GroupJoinService groupJoinService;
+  private final GroupMembersService groupMembersService;
+
+  @GetMapping("/{groupId}/members")
+  @AuthRequired
+  public ApiResponse<List<GroupMemberResponse>> getGroupMembers(@PathVariable Long groupId) {
+    return ApiResponse.success(groupMembersService.getMembers(groupId));
+  }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
