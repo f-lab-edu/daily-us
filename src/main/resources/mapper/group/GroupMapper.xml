@@ -16,6 +16,14 @@
     <result property="deletedAt" column="deleted_at"/>
   </resultMap>
 
+  <resultMap id="groupMemberResponseResultMap" type="com.jaeychoi.dailyus.group.dto.GroupMemberResponse">
+    <constructor>
+      <idArg column="user_id" javaType="java.lang.Long"/>
+      <arg column="nickname" javaType="java.lang.String"/>
+      <arg column="profile_image" javaType="java.lang.String"/>
+    </constructor>
+  </resultMap>
+
   <insert id="insert"
     parameterType="com.jaeychoi.dailyus.group.domain.Group"
     useGeneratedKeys="true"
@@ -62,6 +70,17 @@
     FROM user_groups
     WHERE group_id = #{groupId}
       AND deleted_at IS NULL
+  </select>
+
+  <select id="findMembersByGroupId" resultMap="groupMemberResponseResultMap">
+    SELECT u.user_id,
+           u.nickname,
+           u.profile_image
+    FROM group_members gm
+    JOIN users u ON u.user_id = gm.user_id
+    WHERE gm.group_id = #{groupId}
+      AND u.deleted_at IS NULL
+    ORDER BY gm.created_at, u.user_id
   </select>
 
   <select id="existsMemberByIdAndMemberId" resultType="boolean">
