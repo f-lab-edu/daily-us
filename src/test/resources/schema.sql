@@ -77,6 +77,17 @@ CREATE TABLE comments (
 CREATE INDEX idx_comments_post_id_created_at ON comments (post_id, created_at);
 CREATE INDEX idx_comments_parent_id_created_at ON comments (parent_id, created_at);
 
+CREATE TABLE post_likes (
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (post_id, user_id),
+    CONSTRAINT fk_post_likes_post_id
+        FOREIGN KEY (post_id) REFERENCES posts (post_id),
+    CONSTRAINT fk_post_likes_user_id
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
+);
+
 CREATE TABLE hashtag (
     hashtag_id BIGINT NOT NULL AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
@@ -108,17 +119,6 @@ CREATE TABLE user_follow (
         FOREIGN KEY (followee) REFERENCES users (user_id)
 );
 CREATE INDEX idx_user_follow_followee ON user_follow (followee);
-
-CREATE TABLE post_likes (
-    post_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (post_id, user_id),
-    CONSTRAINT fk_post_likes_post_id
-        FOREIGN KEY (post_id) REFERENCES posts (post_id),
-    CONSTRAINT fk_post_likes_user_id
-        FOREIGN KEY (user_id) REFERENCES users (user_id)
-);
 
 CREATE TABLE comment_likes (
     comment_id BIGINT NOT NULL,
