@@ -62,7 +62,7 @@ class GroupControllerTest {
 
     objectMapper = new ObjectMapper();
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new GroupController(groupCreateService, groupJoinService, groupRankService))
+            new GroupController(groupCreateService, groupDetailService, groupJoinService, groupRankService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
