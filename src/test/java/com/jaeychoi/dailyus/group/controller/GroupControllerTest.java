@@ -206,7 +206,7 @@ class GroupControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.code").value("OK"))
         .andExpect(jsonPath("$.data.groupId").value(1L))
-        .andExpect(jsonPath("$.data.rank[0].rank").value(1))
+        .andExpect(jsonPath("$.data.rank[0].ranking").value(1))
         .andExpect(jsonPath("$.data.rank[0].userId").value(2L))
         .andExpect(jsonPath("$.data.rank[0].nickname").value("tester"))
         .andExpect(jsonPath("$.data.rank[0].postCount").value(3L));

@@ -46,12 +46,12 @@ class GroupRankServiceTest {
 
     assertThat(response.groupId()).isEqualTo(groupId);
     assertThat(response.rank()).hasSize(3);
-    assertThat(response.rank().get(0).rank()).isEqualTo(1);
+    assertThat(response.rank().get(0).ranking()).isEqualTo(1);
     assertThat(response.rank().get(0).userId()).isEqualTo(2L);
     assertThat(response.rank().get(0).postCount()).isEqualTo(5L);
-    assertThat(response.rank().get(1).rank()).isEqualTo(1);
+    assertThat(response.rank().get(1).ranking()).isEqualTo(1);
     assertThat(response.rank().get(1).userId()).isEqualTo(3L);
-    assertThat(response.rank().get(2).rank()).isEqualTo(2);
+    assertThat(response.rank().get(2).ranking()).isEqualTo(2);
     assertThat(response.rank().get(2).userId()).isEqualTo(1L);
     assertThat(response.rank().get(2).postCount()).isEqualTo(2L);
   }
