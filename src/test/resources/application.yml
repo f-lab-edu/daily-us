@@ -8,6 +8,8 @@ spring:
     init:
       mode: always
       schema-locations: classpath:schema.sql
+  kafka:
+    bootstrap-servers: localhost:9092
 
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -17,3 +19,8 @@ jwt:
   secret: test-secret-key-that-is-long-enough-for-hmac-256
   access-token-expiration-seconds: 3600
   refresh-token-expiration-seconds: 1209600
+
+app:
+  kafka:
+    topics:
+      post-created: post.created

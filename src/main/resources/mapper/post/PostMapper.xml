@@ -4,6 +4,16 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.jaeychoi.dailyus.post.mapper.PostMapper">
 
+    <resultMap id="postResultMap" type="com.jaeychoi.dailyus.post.domain.Post">
+        <id property="postId" column="post_id"/>
+        <result property="content" column="content"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+        <result property="likeCount" column="like_count"/>
+        <result property="userId" column="user_id"/>
+    </resultMap>
+
     <resultMap id="postFeedRowResultMap" type="com.jaeychoi.dailyus.post.dto.PostFeedRow">
         <constructor>
             <idArg column="post_id" javaType="java.lang.Long"/>
@@ -27,17 +37,21 @@
         SELECT EXISTS (
             SELECT 1
             FROM (
-                     SELECT gm.user_id
-                     FROM group_members gm
-                     WHERE gm.group_id IN (
-                         SELECT my_group.group_id
-                         FROM group_members my_group
-                         WHERE my_group.user_id = #{userId}
-                     )
-                     UNION
-                     SELECT uf.followee
-                     FROM user_follow uf
-                     WHERE uf.follower = #{userId}
+                   SELECT gm.user_id
+                   FROM group_members gm
+                          JOIN user_groups ug ON ug.group_id = gm.group_id
+                   WHERE gm.group_id IN (
+                     SELECT m.group_id
+                     FROM group_members m
+                            JOIN user_groups my_ug ON my_ug.group_id = m.group_id
+                     WHERE m.user_id = #{userId}
+                       AND my_ug.deleted_at IS NULL
+                   )
+                     AND ug.deleted_at IS NULL
+                   UNION
+                   SELECT f.followee user_id
+                   FROM user_follow f
+                   WHERE f.follower = #{userId}
                  ) related_users
             INNER JOIN users u ON u.user_id = related_users.user_id
             INNER JOIN posts p ON p.user_id = related_users.user_id
@@ -55,13 +69,17 @@
                p.like_count,
                p.created_at
         FROM (
-                 SELECT user_id
-                 FROM group_members
-                 WHERE group_id IN (
+                 SELECT gm.user_id
+                 FROM group_members gm
+                 JOIN user_groups ug ON ug.group_id = gm.group_id
+                 WHERE gm.group_id IN (
                      SELECT m.group_id
                      FROM group_members m
+                     JOIN user_groups my_ug ON my_ug.group_id = m.group_id
                      WHERE m.user_id = #{userId}
+                       AND my_ug.deleted_at IS NULL
                  )
+                 AND ug.deleted_at IS NULL
                  UNION
                  SELECT f.followee user_id
                  FROM user_follow f
@@ -79,6 +97,25 @@
     </select>
     
     <select id="findRecentFeedPosts" resultMap="postFeedRowResultMap">
+      SELECT p.post_id,
+      u.user_id,
+      u.nickname,
+      u.profile_image,
+      p.content,
+      p.like_count,
+      p.created_at
+      FROM posts p
+      JOIN users u ON u.user_id = p.user_id
+      WHERE p.deleted_at IS NULL
+      AND u.deleted_at IS NULL
+      <if test="createdAt != null and postId != null">
+        AND (p.created_at, p.post_id) &lt; (#{createdAt}, #{postId})
+      </if>
+      ORDER BY p.created_at DESC, p.post_id DESC
+      LIMIT #{size}
+    </select>
+
+    <select id="findFeedPostsByIds" resultMap="postFeedRowResultMap">
         SELECT p.post_id,
                u.user_id,
                u.nickname,
@@ -90,11 +127,10 @@
         JOIN users u ON u.user_id = p.user_id
         WHERE p.deleted_at IS NULL
         AND u.deleted_at IS NULL
-        <if test="createdAt != null and postId != null">
-            AND (p.created_at, p.post_id) &lt; (#{createdAt}, #{postId})
-        </if>
-        ORDER BY p.created_at DESC, p.post_id DESC
-        LIMIT #{size}
+        AND p.post_id IN
+        <foreach collection="postIds" item="postId" open="(" separator="," close=")">
+            #{postId}
+        </foreach>
     </select>
 
     <select id="findImagesByPostIds" resultMap="postImageRowResultMap">
@@ -123,6 +159,19 @@
             #{userId}
         )
     </insert>
+
+    <select id="findById" resultMap="postResultMap">
+        SELECT post_id,
+               content,
+               created_at,
+               updated_at,
+               deleted_at,
+               like_count,
+               user_id
+        FROM posts
+        WHERE post_id = #{postId}
+          AND deleted_at IS NULL
+    </select>
 
     <insert id="insertImages">
         INSERT INTO post_images (

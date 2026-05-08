@@ -150,6 +150,60 @@ class PostMapperTest {
   }
 
   @Test
+  void findFeedPostsExcludesDeletedFolloweesDeletedMembersAndDeletedGroups() throws Exception {
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long activeFolloweeId = insertUser(uniqueEmail("active-followee"), uniqueNickname("active-followee"));
+    Long deletedFolloweeId = insertUser(uniqueEmail("deleted-followee"), uniqueNickname("deleted-followee"));
+    Long activeGroupMemberId = insertUser(uniqueEmail("active-group"), uniqueNickname("active-group"));
+    Long deletedGroupMemberId = insertUser(uniqueEmail("deleted-group"), uniqueNickname("deleted-group"));
+
+    insertFollow(loginUserId, activeFolloweeId);
+    insertFollow(loginUserId, deletedFolloweeId);
+
+    Long activeGroupId = insertGroup(loginUserId, "active-group");
+    Long deletedGroupId = insertGroup(loginUserId, "deleted-group");
+    insertGroupMember(activeGroupId, loginUserId);
+    insertGroupMember(activeGroupId, activeGroupMemberId);
+    insertGroupMember(deletedGroupId, loginUserId);
+    insertGroupMember(deletedGroupId, deletedGroupMemberId);
+
+    Long activeFolloweePostId = insertPost(activeFolloweeId, "active followee post");
+    Long deletedFolloweePostId = insertPost(deletedFolloweeId, "deleted followee post");
+    Long activeGroupMemberPostId = insertPost(activeGroupMemberId, "active group member post");
+    Long deletedGroupMemberPostId = insertPost(deletedGroupMemberId, "deleted group member post");
+
+    softDeleteUser(deletedFolloweeId);
+    softDeleteGroup(deletedGroupId);
+
+    List<PostFeedRow> rows = postMapper.findFeedPosts(loginUserId, 10L, null, null);
+
+    assertThat(rows).extracting(PostFeedRow::postId)
+        .contains(activeFolloweePostId, activeGroupMemberPostId)
+        .doesNotContain(deletedFolloweePostId, deletedGroupMemberPostId);
+  }
+
+  @Test
+  void existsFeedPostsReturnsFalseWhenOnlyDeletedRelationsHavePosts() throws Exception {
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long deletedFolloweeId = insertUser(uniqueEmail("deleted-followee"), uniqueNickname("deleted-followee"));
+    Long deletedGroupMemberId = insertUser(uniqueEmail("deleted-group"), uniqueNickname("deleted-group"));
+
+    insertFollow(loginUserId, deletedFolloweeId);
+    Long deletedGroupId = insertGroup(loginUserId, "deleted-group");
+    insertGroupMember(deletedGroupId, loginUserId);
+    insertGroupMember(deletedGroupId, deletedGroupMemberId);
+    insertPost(deletedFolloweeId, "deleted followee post");
+    insertPost(deletedGroupMemberId, "deleted group member post");
+
+    softDeleteUser(deletedFolloweeId);
+    softDeleteGroup(deletedGroupId);
+
+    boolean exists = postMapper.existsFeedPosts(loginUserId);
+
+    assertThat(exists).isFalse();
+  }
+
+  @Test
   void findRecentFeedPostsReturnsRecentPostsOrderedByCreatedAtDescThenPostIdDesc() throws Exception {
     Long firstUserId = insertUser(uniqueEmail("first"), uniqueNickname("first"));
     Long secondUserId = insertUser(uniqueEmail("second"), uniqueNickname("second"));
@@ -332,6 +386,28 @@ class PostMapperTest {
         )) {
       statement.setTimestamp(1, Timestamp.valueOf(createdAt));
       statement.setLong(2, postId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void softDeleteUser(Long userId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE users SET deleted_at = ? WHERE user_id = ?"
+        )) {
+      statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.of(2026, 4, 24, 12, 0)));
+      statement.setLong(2, userId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void softDeleteGroup(Long groupId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE user_groups SET deleted_at = ? WHERE group_id = ?"
+        )) {
+      statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.of(2026, 4, 24, 12, 0)));
+      statement.setLong(2, groupId);
       statement.executeUpdate();
     }
   }

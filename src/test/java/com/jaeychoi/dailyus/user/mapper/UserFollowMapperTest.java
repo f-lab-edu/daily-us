@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
@@ -26,8 +29,8 @@ class UserFollowMapperTest {
   @Test
   void insertAndDeleteManageFollowRelationship() throws Exception {
     // given
-    Long followerId = insertUser("follower@example.com", "follower");
-    Long followeeId = insertUser("followee@example.com", "followee");
+    Long followerId = insertUser(uniqueEmail("follower"), uniqueNickname("follower"));
+    Long followeeId = insertUser(uniqueEmail("followee"), uniqueNickname("followee"));
 
     // when
     userFollowMapper.insert(followerId, followeeId);
@@ -41,8 +44,8 @@ class UserFollowMapperTest {
   @Test
   void userMapperCountUpdatesReflectInLoadedUser() throws Exception {
     // given
-    Long followerId = insertUser("actor@example.com", "actor");
-    Long followeeId = insertUser("target@example.com", "target");
+    Long followerId = insertUser(uniqueEmail("actor"), uniqueNickname("actor"));
+    Long followeeId = insertUser(uniqueEmail("target"), uniqueNickname("target"));
 
     // when
     userMapper.incrementFolloweeCount(followerId);
@@ -53,6 +56,33 @@ class UserFollowMapperTest {
     // then
     assertThat(userMapper.findActiveById(followerId).getFolloweeCount()).isZero();
     assertThat(userMapper.findActiveById(followeeId).getFollowerCount()).isZero();
+  }
+
+  @Test
+  void findFollowerIdsByFolloweeReturnsFollowers() throws Exception {
+    Long followeeId = insertUser(uniqueEmail("writer"), uniqueNickname("writer"));
+    Long firstFollowerId = insertUser(uniqueEmail("first"), uniqueNickname("first"));
+    Long secondFollowerId = insertUser(uniqueEmail("second"), uniqueNickname("second"));
+
+    userFollowMapper.insert(firstFollowerId, followeeId);
+    userFollowMapper.insert(secondFollowerId, followeeId);
+
+    assertThat(userFollowMapper.findFollowerIdsByFollowee(followeeId))
+        .containsExactlyInAnyOrder(firstFollowerId, secondFollowerId);
+  }
+
+  @Test
+  void findFollowerIdsByFolloweeExcludesDeletedFollowers() throws Exception {
+    Long followeeId = insertUser(uniqueEmail("writer2"), uniqueNickname("writer2"));
+    Long activeFollowerId = insertUser(uniqueEmail("active"), uniqueNickname("active"));
+    Long deletedFollowerId = insertUser(uniqueEmail("deleted"), uniqueNickname("deleted"));
+
+    userFollowMapper.insert(activeFollowerId, followeeId);
+    userFollowMapper.insert(deletedFollowerId, followeeId);
+    softDeleteUser(deletedFollowerId);
+
+    assertThat(userFollowMapper.findFollowerIdsByFollowee(followeeId))
+        .containsExactly(activeFollowerId);
   }
 
   private Long insertUser(String email, String nickname) throws Exception {
@@ -108,5 +138,24 @@ class UserFollowMapperTest {
         return resultSet.getBoolean(1);
       }
     }
+  }
+
+  private void softDeleteUser(Long userId) throws Exception {
+    Connection connection = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = connection.prepareStatement(
+        "UPDATE users SET deleted_at = ? WHERE user_id = ?"
+    )) {
+      statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.of(2026, 4, 24, 12, 0)));
+      statement.setLong(2, userId);
+      statement.executeUpdate();
+    }
+  }
+
+  private String uniqueEmail(String prefix) {
+    return prefix + "-" + UUID.randomUUID() + "@example.com";
+  }
+
+  private String uniqueNickname(String prefix) {
+    return prefix + "-" + UUID.randomUUID();
   }
 }

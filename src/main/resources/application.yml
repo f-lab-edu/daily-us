@@ -13,6 +13,8 @@ spring:
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}
       client-name: ${REDIS_CLIENT_NAME}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
 
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -30,3 +32,8 @@ management:
     web:
       exposure:
         include: prometheus,health,info,metrics
+
+app:
+  kafka:
+    topics:
+      post-created: ${KAFKA_TOPIC_POST_CREATED}
