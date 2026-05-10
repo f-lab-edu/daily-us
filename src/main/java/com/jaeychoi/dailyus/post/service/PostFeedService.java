@@ -5,7 +5,6 @@ import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedRow;
 import com.jaeychoi.dailyus.post.dto.PostImageRow;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
-import com.jaeychoi.dailyus.post.repository.PostFeedRepository;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Comparator;
@@ -15,10 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PostFeedService {
@@ -26,18 +23,18 @@ public class PostFeedService {
   private static final long DEFAULT_SIZE = 10L;
 
   private final PostMapper postMapper;
-  private final PostFeedRepository postFeedRepository;
+  private final PostFeedCacheService postFeedCacheService;
 
   public PostFeedResponse getFeed(Long userId, LocalDateTime createdAt, Long postId, Long size) {
     long pageSize = resolvePageSize(size);
     List<Long> cachedPostIds =
-        postFeedRepository.findByUserIdAndCursor(userId, postId, pageSize + 1);
+        postFeedCacheService.findCachedPostIds(userId, postId, pageSize + 1);
 
     List<PostFeedRow> rows;
     if (cachedPostIds != null) {
       rows = loadFeedRowsByPostIds(cachedPostIds);
     } else {
-      rows = loadFeedRowsByCursor(userId, createdAt, postId, pageSize + 1);
+      rows = postFeedCacheService.loadFeedRows(userId, createdAt, postId, pageSize + 1);
     }
 
     boolean hasNext = hasNext(rows, pageSize);
@@ -58,19 +55,6 @@ public class PostFeedService {
       return DEFAULT_SIZE;
     }
     return size;
-  }
-
-  private List<PostFeedRow> loadFeedRowsByCursor(
-      Long userId,
-      LocalDateTime createdAt,
-      Long postId,
-      long size
-  ) {
-    if (postMapper.existsFeedPosts(userId)) {
-      return postMapper.findFeedPosts(userId, size, createdAt, postId);
-    }
-
-    return postMapper.findRecentFeedPosts(size, createdAt, postId);
   }
 
   private List<PostFeedRow> loadFeedRowsByPostIds(List<Long> postIds) {
