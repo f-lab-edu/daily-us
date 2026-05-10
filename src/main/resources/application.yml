@@ -37,3 +37,6 @@ app:
   kafka:
     topics:
       post-created: ${KAFKA_TOPIC_POST_CREATED}
+  feed-cache:
+    warmup:
+      enabled: true
