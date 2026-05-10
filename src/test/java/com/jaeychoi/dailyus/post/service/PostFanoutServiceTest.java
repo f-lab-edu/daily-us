@@ -5,7 +5,6 @@ import static org.mockito.Mockito.when;
 
 import com.jaeychoi.dailyus.group.mapper.GroupMapper;
 import com.jaeychoi.dailyus.post.event.PostCreatedEvent;
-import com.jaeychoi.dailyus.post.repository.PostFeedRepository;
 import com.jaeychoi.dailyus.user.mapper.UserFollowMapper;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +24,7 @@ class PostFanoutServiceTest {
   private GroupMapper groupMapper;
 
   @Mock
-  private PostFeedRepository postFeedRepository;
+  private PostFeedCacheService postFeedCacheService;
 
   @InjectMocks
   private PostFanoutService postFanoutService;
@@ -39,6 +38,6 @@ class PostFanoutServiceTest {
 
     postFanoutService.fanout(event);
 
-    verify(postFeedRepository).addPostIdToFeeds(List.of(3L, 9L, 7L, 11L), 15L, createdAt);
+    verify(postFeedCacheService).cachePostToFeeds(List.of(3L, 9L, 7L, 11L), 15L, createdAt);
   }
 }

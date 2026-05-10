@@ -29,7 +29,8 @@ class PostFeedRepositoryTest {
     postFeedRepository.addPostIdToFeeds(
         List.of(7L),
         101L,
-        LocalDateTime.of(2026, 4, 26, 12, 0)
+        LocalDateTime.of(2026, 4, 26, 12, 0),
+        100L
     );
 
     verify(redisTemplate).execute(
