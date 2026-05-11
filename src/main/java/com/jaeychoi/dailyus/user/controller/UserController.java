@@ -75,6 +75,18 @@ public class UserController {
     return ApiResponse.success(userPostService.getMyPosts(user.userId(), createdAt, postId, size));
   }
 
+  @GetMapping("/{userId}/posts")
+  @AuthRequired
+  public ApiResponse<PostFeedResponse> getUserPosts(
+      @PathVariable("userId") Long targetUserId,
+      @RequestParam(required = false)
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+      LocalDateTime createdAt,
+      @RequestParam(required = false) Long postId,
+      @RequestParam(required = false, defaultValue = "10") Long size) {
+    return ApiResponse.success(userPostService.getPosts(targetUserId, createdAt, postId, size));
+  }
+
   @PostMapping("/{userId}/follow")
   @ResponseStatus(HttpStatus.CREATED)
   @AuthRequired
