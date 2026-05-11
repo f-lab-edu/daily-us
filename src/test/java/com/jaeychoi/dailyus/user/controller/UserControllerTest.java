@@ -233,6 +233,76 @@ class UserControllerTest {
   }
 
   @Test
+  void getUserPostsReturnsOkResponse() throws Exception {
+    PostFeedResponse response = new PostFeedResponse(
+        List.of(new PostFeedItemResponse(
+            20L,
+            2L,
+            "target",
+            "https://example.com/target.png",
+            "target content",
+            List.of("https://cdn.example.com/20-1.png"),
+            4L,
+            LocalDateTime.of(2026, 5, 2, 10, 0)
+        )),
+        LocalDateTime.of(2026, 5, 2, 10, 0),
+        20L,
+        false,
+        10L
+    );
+    when(userPostService.getPosts(2L, null, null, 10L)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/users/2/posts")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.lastCreatedAt").value("2026-05-02T10:00:00"))
+        .andExpect(jsonPath("$.data.lastPostId").value(20L))
+        .andExpect(jsonPath("$.data.hasNext").value(false))
+        .andExpect(jsonPath("$.data.items[0].userId").value(2L))
+        .andExpect(jsonPath("$.data.items[0].postId").value(20L));
+  }
+
+  @Test
+  void getUserPostsPassesCursorAndSizeQueryParameters() throws Exception {
+    PostFeedResponse response = new PostFeedResponse(
+        List.of(),
+        LocalDateTime.of(2026, 5, 2, 8, 0),
+        17L,
+        true,
+        5L
+    );
+    when(userPostService.getPosts(
+        2L,
+        LocalDateTime.of(2026, 5, 2, 9, 0),
+        18L,
+        5L
+    )).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/users/2/posts")
+            .queryParam("createdAt", "2026-05-02T09:00:00")
+            .queryParam("postId", "18")
+            .queryParam("size", "5")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.lastCreatedAt").value("2026-05-02T08:00:00"))
+        .andExpect(jsonPath("$.data.lastPostId").value(17L))
+        .andExpect(jsonPath("$.data.hasNext").value(true))
+        .andExpect(jsonPath("$.data.size").value(5L));
+  }
+
+  @Test
+  void getUserPostsReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(get("/api/v1/users/2/posts"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
   void followReturnsCreatedResponse() throws Exception {
     UserFollowResponse response = new UserFollowResponse(2L, true, 3L, 1L);
     when(userFollowService.follow(1L, 2L)).thenReturn(response);
