@@ -20,6 +20,7 @@ import com.jaeychoi.dailyus.user.dto.UserActivityResponse;
 import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
 import com.jaeychoi.dailyus.user.dto.UserGroupItemResponse;
 import com.jaeychoi.dailyus.user.dto.UserGroupResponse;
+import com.jaeychoi.dailyus.user.dto.UserMyProfileResponse;
 import com.jaeychoi.dailyus.user.dto.UserProfileResponse;
 import com.jaeychoi.dailyus.user.service.UserActivityService;
 import com.jaeychoi.dailyus.user.service.UserFollowService;
@@ -169,7 +170,7 @@ class UserControllerTest {
 
   @Test
   void getMyProfileReturnsOkResponse() throws Exception {
-    UserProfileResponse response = new UserProfileResponse(
+    UserMyProfileResponse response = new UserMyProfileResponse(
         1L,
         "user@example.com",
         "dailyus",
@@ -179,7 +180,7 @@ class UserControllerTest {
         7L,
         5L
     );
-    when(userProfileService.getProfile(1L)).thenReturn(response);
+    when(userProfileService.getMyProfile(1L)).thenReturn(response);
 
     mockMvc.perform(get("/api/v1/users/me")
             .requestAttr(AuthRequestAttributes.CURRENT_USER,
@@ -199,6 +200,45 @@ class UserControllerTest {
   @Test
   void getMyProfileReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
     mockMvc.perform(get("/api/v1/users/me"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void getUserProfileReturnsOkResponse() throws Exception {
+    UserProfileResponse response = new UserProfileResponse(
+        2L,
+        "target",
+        "target intro",
+        "https://cdn.example.com/target.png",
+        8L,
+        3L,
+        12L,
+        true
+    );
+    when(userProfileService.getProfile(1L, 2L)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/users/2")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.userId").value(2L))
+        .andExpect(jsonPath("$.data.nickname").value("target"))
+        .andExpect(jsonPath("$.data.intro").value("target intro"))
+        .andExpect(jsonPath("$.data.profileImage").value("https://cdn.example.com/target.png"))
+        .andExpect(jsonPath("$.data.followerCount").value(8L))
+        .andExpect(jsonPath("$.data.followeeCount").value(3L))
+        .andExpect(jsonPath("$.data.postCount").value(12L))
+        .andExpect(jsonPath("$.data.following").value(true))
+        .andExpect(jsonPath("$.data.email").doesNotExist());
+  }
+
+  @Test
+  void getUserProfileReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(get("/api/v1/users/2"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
