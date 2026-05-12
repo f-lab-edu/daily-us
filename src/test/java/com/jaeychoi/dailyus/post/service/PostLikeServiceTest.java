@@ -10,11 +10,13 @@ import com.jaeychoi.dailyus.common.exception.BaseException;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
+import com.jaeychoi.dailyus.post.repository.PostLikeRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 @ExtendWith(MockitoExtension.class)
 class PostLikeServiceTest {
@@ -22,20 +24,23 @@ class PostLikeServiceTest {
   @Mock
   private PostMapper postMapper;
 
+  @Mock
+  private PostLikeRepository postLikeRepository;
+
   @InjectMocks
   private PostLikeService postLikeService;
 
   @Test
   void likeCreatesPostLikeAndIncrementsCount() {
     when(postMapper.existsActiveById(10L)).thenReturn(true);
-    when(postMapper.countLikesByPostIdAndUserId(10L, 1L)).thenReturn(0);
     when(postMapper.findLikeCountByPostId(10L)).thenReturn(3L);
+    when(postLikeRepository.incrementDelta(10L)).thenReturn(1L);
 
     PostLikeResponse response = postLikeService.like(1L, 10L);
 
     verify(postMapper).insertLike(10L, 1L);
-    verify(postMapper).incrementLikeCount(10L);
-    assertThat(response).isEqualTo(new PostLikeResponse(10L, true, 3L));
+    verify(postLikeRepository).incrementDelta(10L);
+    assertThat(response).isEqualTo(new PostLikeResponse(10L, true, 4L));
   }
 
   @Test
@@ -53,14 +58,15 @@ class PostLikeServiceTest {
   @Test
   void likeThrowsWhenLikeAlreadyExists() {
     when(postMapper.existsActiveById(10L)).thenReturn(true);
-    when(postMapper.countLikesByPostIdAndUserId(10L, 1L)).thenReturn(1);
+    org.mockito.Mockito.doThrow(new DuplicateKeyException("duplicate"))
+        .when(postMapper).insertLike(10L, 1L);
 
     assertThatThrownBy(() -> postLikeService.like(1L, 10L))
         .isInstanceOf(BaseException.class)
         .extracting(exception -> ((BaseException) exception).getErrorCode())
         .isEqualTo(ErrorCode.POST_LIKE_ALREADY_EXISTS);
 
-    verify(postMapper, never()).insertLike(10L, 1L);
+    verify(postLikeRepository, never()).incrementDelta(10L);
   }
 
   @Test
@@ -68,11 +74,12 @@ class PostLikeServiceTest {
     when(postMapper.existsActiveById(10L)).thenReturn(true);
     when(postMapper.deleteLike(10L, 1L)).thenReturn(1);
     when(postMapper.findLikeCountByPostId(10L)).thenReturn(2L);
+    when(postLikeRepository.decrementDelta(10L)).thenReturn(-1L);
 
     PostLikeResponse response = postLikeService.unlike(1L, 10L);
 
-    verify(postMapper).decrementLikeCount(10L);
-    assertThat(response).isEqualTo(new PostLikeResponse(10L, false, 2L));
+    verify(postLikeRepository).decrementDelta(10L);
+    assertThat(response).isEqualTo(new PostLikeResponse(10L, false, 1L));
   }
 
   @Test
@@ -85,6 +92,6 @@ class PostLikeServiceTest {
         .extracting(exception -> ((BaseException) exception).getErrorCode())
         .isEqualTo(ErrorCode.POST_LIKE_NOT_FOUND);
 
-    verify(postMapper, never()).decrementLikeCount(10L);
+    verify(postLikeRepository, never()).decrementDelta(10L);
   }
 }
