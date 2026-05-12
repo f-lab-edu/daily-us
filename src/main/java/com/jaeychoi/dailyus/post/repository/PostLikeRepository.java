@@ -1,0 +1,89 @@
+package com.jaeychoi.dailyus.post.repository;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class PostLikeRepository {
+
+  private static final String DELTA_KEY_PREFIX = "post:like:delta:";
+  private static final String DIRTY_KEY = "post:like:dirty";
+  private static final DefaultRedisScript<String> DRAIN_DELTA_SCRIPT = new DefaultRedisScript<>(
+      """
+          local value = redis.call('GET', KEYS[1])
+          if value then
+            redis.call('DEL', KEYS[1])
+          end
+          return value
+          """,
+      String.class
+  );
+
+  private final StringRedisTemplate redisTemplate;
+
+  public PostLikeRepository(StringRedisTemplate redisTemplate) {
+    this.redisTemplate = redisTemplate;
+  }
+
+  public long incrementDelta(Long postId) {
+    return addDelta(postId, 1L);
+  }
+
+  public long decrementDelta(Long postId) {
+    return addDelta(postId, -1L);
+  }
+
+  public long addDelta(Long postId, long delta) {
+    if (postId == null || delta == 0L) {
+      return 0L;
+    }
+
+    Long updated = redisTemplate.opsForValue().increment(buildDeltaKey(postId), delta);
+    redisTemplate.opsForSet().add(DIRTY_KEY, String.valueOf(postId));
+    return updated == null ? 0L : updated;
+  }
+
+  public long findDelta(Long postId) {
+    if (postId == null) {
+      return 0L;
+    }
+
+    String value = redisTemplate.opsForValue().get(buildDeltaKey(postId));
+    return value == null ? 0L : Long.parseLong(value);
+  }
+
+  public List<Long> popDirtyPostIds(long limit) {
+    if (limit <= 0) {
+      return List.of();
+    }
+
+    List<Long> postIds = new ArrayList<>();
+    for (long i = 0; i < limit; i++) {
+      String popped = redisTemplate.opsForSet().pop(DIRTY_KEY);
+      if (popped == null) {
+        break;
+      }
+      postIds.add(Long.parseLong(popped));
+    }
+    return postIds;
+  }
+
+  public long drainDelta(Long postId) {
+    if (postId == null) {
+      return 0L;
+    }
+
+    String drained = redisTemplate.execute(
+        DRAIN_DELTA_SCRIPT,
+        List.of(buildDeltaKey(postId))
+    );
+    return drained == null ? 0L : Long.parseLong(drained);
+  }
+
+  private String buildDeltaKey(Long postId) {
+    return DELTA_KEY_PREFIX + postId;
+  }
+}
