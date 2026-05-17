@@ -6,21 +6,22 @@ import com.jaeychoi.dailyus.auth.domain.CurrentUser;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
+import com.jaeychoi.dailyus.user.dto.UserGroupResponse;
 import com.jaeychoi.dailyus.user.dto.UserProfileResponse;
 import com.jaeychoi.dailyus.user.service.UserFollowService;
+import com.jaeychoi.dailyus.user.service.UserMyGroupService;
 import com.jaeychoi.dailyus.user.service.UserPostService;
-import java.time.LocalDateTime;
 import com.jaeychoi.dailyus.user.service.UserProfileService;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,6 +31,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
   private final UserFollowService userFollowService;
+  private final UserMyGroupService userMyGroupService;
+
+  @GetMapping("/me/groups")
+  @AuthRequired
+  public ApiResponse<UserGroupResponse> getMyGroups(@AuthenticatedUser CurrentUser user) {
+    UserGroupResponse response = userMyGroupService.getMyGroups(user.userId());
+    return ApiResponse.success(response);
+  }
+
   private final UserProfileService userProfileService;
 
   @GetMapping("/me")
@@ -37,6 +47,7 @@ public class UserController {
   public ApiResponse<UserProfileResponse> getMyProfile(@AuthenticatedUser CurrentUser user) {
     return ApiResponse.success(userProfileService.getProfile(user.userId()));
   }
+
   private final UserPostService userPostService;
 
   @GetMapping("/me/posts")
