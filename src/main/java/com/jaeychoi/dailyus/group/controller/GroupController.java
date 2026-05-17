@@ -6,9 +6,11 @@ import com.jaeychoi.dailyus.auth.domain.CurrentUser;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
 import com.jaeychoi.dailyus.group.dto.GroupCreateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
+import com.jaeychoi.dailyus.group.dto.GroupDetailResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
 import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
+import com.jaeychoi.dailyus.group.service.GroupDetailService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
 import com.jaeychoi.dailyus.group.service.GroupRankService;
 import jakarta.validation.Valid;
@@ -28,8 +30,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class GroupController {
 
   private final GroupCreateService groupCreateService;
+  private final GroupDetailService groupDetailService;
   private final GroupJoinService groupJoinService;
   private final GroupRankService groupRankService;
+
+  @GetMapping("/{groupId}")
+  @AuthRequired
+  public ApiResponse<GroupDetailResponse> getGroupDetail(@PathVariable Long groupId) {
+    return ApiResponse.success(groupDetailService.getDetail(groupId));
+  }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
@@ -44,7 +53,8 @@ public class GroupController {
 
   @PostMapping("/{groupId}/join")
   @AuthRequired
-  public ApiResponse<GroupJoinResponse> joinGroup(@PathVariable Long groupId, @AuthenticatedUser CurrentUser user) {
+  public ApiResponse<GroupJoinResponse> joinGroup(@PathVariable Long groupId,
+      @AuthenticatedUser CurrentUser user) {
     GroupJoinResponse response = groupJoinService.join(groupId, user.userId());
     return ApiResponse.success(response);
   }
