@@ -6,7 +6,6 @@ import com.jaeychoi.dailyus.post.dto.PostImageRow;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface PostMapper {
@@ -38,6 +37,8 @@ public interface PostMapper {
   List<PostFeedRow> findFeedPosts(Long userId, Long size, LocalDateTime createdAt, Long postId);
 
   List<PostFeedRow> findRecentFeedPosts(Long size, LocalDateTime createdAt, Long postId);
+
+  List<Integer> findActivityDaysByUserId(Long userId, LocalDateTime startAt, LocalDateTime endAt);
 
   List<PostFeedRow> findFeedPostsByIds(List<Long> postIds);
 

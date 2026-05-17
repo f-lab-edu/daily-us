@@ -155,7 +155,8 @@ class PostMapperTest {
     updatePostCreatedAt(lowerPostId, sameCreatedAt);
     updatePostCreatedAt(higherPostId, sameCreatedAt);
 
-    List<PostFeedRow> rows = postMapper.findFeedPosts(loginUserId, 10L, sameCreatedAt, higherPostId);
+    List<PostFeedRow> rows = postMapper.findFeedPosts(loginUserId, 10L, sameCreatedAt,
+        higherPostId);
 
     assertThat(rows).extracting(PostFeedRow::postId)
         .contains(lowerPostId)
@@ -188,10 +189,14 @@ class PostMapperTest {
   @Test
   void findFeedPostsExcludesDeletedFolloweesDeletedMembersAndDeletedGroups() throws Exception {
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
-    Long activeFolloweeId = insertUser(uniqueEmail("active-followee"), uniqueNickname("active-followee"));
-    Long deletedFolloweeId = insertUser(uniqueEmail("deleted-followee"), uniqueNickname("deleted-followee"));
-    Long activeGroupMemberId = insertUser(uniqueEmail("active-group"), uniqueNickname("active-group"));
-    Long deletedGroupMemberId = insertUser(uniqueEmail("deleted-group"), uniqueNickname("deleted-group"));
+    Long activeFolloweeId = insertUser(uniqueEmail("active-followee"),
+        uniqueNickname("active-followee"));
+    Long deletedFolloweeId = insertUser(uniqueEmail("deleted-followee"),
+        uniqueNickname("deleted-followee"));
+    Long activeGroupMemberId = insertUser(uniqueEmail("active-group"),
+        uniqueNickname("active-group"));
+    Long deletedGroupMemberId = insertUser(uniqueEmail("deleted-group"),
+        uniqueNickname("deleted-group"));
 
     insertFollow(loginUserId, activeFolloweeId);
     insertFollow(loginUserId, deletedFolloweeId);
@@ -221,8 +226,10 @@ class PostMapperTest {
   @Test
   void existsFeedPostsReturnsFalseWhenOnlyDeletedRelationsHavePosts() throws Exception {
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
-    Long deletedFolloweeId = insertUser(uniqueEmail("deleted-followee"), uniqueNickname("deleted-followee"));
-    Long deletedGroupMemberId = insertUser(uniqueEmail("deleted-group"), uniqueNickname("deleted-group"));
+    Long deletedFolloweeId = insertUser(uniqueEmail("deleted-followee"),
+        uniqueNickname("deleted-followee"));
+    Long deletedGroupMemberId = insertUser(uniqueEmail("deleted-group"),
+        uniqueNickname("deleted-group"));
 
     insertFollow(loginUserId, deletedFolloweeId);
     Long deletedGroupId = insertGroup(loginUserId, "deleted-group");
@@ -262,7 +269,8 @@ class PostMapperTest {
   }
 
   @Test
-  void findPostsReturnsOnlyActivePostsByUserIdOfUserOrderedByCreatedAtDescThenPostIdDesc() throws Exception {
+  void findPostsReturnsOnlyActivePostsByUserIdOfUserOrderedByCreatedAtDescThenPostIdDesc()
+      throws Exception {
     Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
     Long otherUserId = insertUser(uniqueEmail("other"), uniqueNickname("other"));
     Long olderPostId = insertPost(userId, "older post");
@@ -329,6 +337,33 @@ class PostMapperTest {
             "https://cdn.example.com/first-2.png",
             "https://cdn.example.com/second-1.png"
         );
+  }
+
+  @Test
+  void findActivityDaysByUserIdReturnsDistinctDaysWithinMonth() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long otherUserId = insertUser(uniqueEmail("other"), uniqueNickname("other"));
+    Long firstPostId = insertPost(userId, "march 10 first");
+    Long secondPostId = insertPost(userId, "march 10 second");
+    Long thirdPostId = insertPost(userId, "march 12");
+    Long deletedPostId = insertPost(userId, "deleted march 11");
+    Long aprilPostId = insertPost(userId, "april 1");
+    Long otherUserPostId = insertPost(otherUserId, "other user march 15");
+    updatePostCreatedAt(firstPostId, LocalDateTime.of(2026, 3, 10, 9, 0));
+    updatePostCreatedAt(secondPostId, LocalDateTime.of(2026, 3, 10, 20, 0));
+    updatePostCreatedAt(thirdPostId, LocalDateTime.of(2026, 3, 12, 8, 0));
+    updatePostCreatedAt(deletedPostId, LocalDateTime.of(2026, 3, 11, 7, 0));
+    updatePostCreatedAt(aprilPostId, LocalDateTime.of(2026, 4, 1, 10, 0));
+    updatePostCreatedAt(otherUserPostId, LocalDateTime.of(2026, 3, 15, 10, 0));
+    softDeletePost(deletedPostId);
+
+    List<Integer> activityDays = postMapper.findActivityDaysByUserId(
+        userId,
+        LocalDateTime.of(2026, 3, 1, 0, 0),
+        LocalDateTime.of(2026, 4, 1, 0, 0)
+    );
+
+    assertThat(activityDays).containsExactly(10, 12);
   }
 
   private Long insertUser(String email, String nickname) throws Exception {
@@ -456,6 +491,16 @@ class PostMapperTest {
     }
   }
 
+  private void softDeletePost(Long postId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE posts SET deleted_at = CURRENT_TIMESTAMP WHERE post_id = ?"
+        )) {
+      statement.setLong(1, postId);
+      statement.executeUpdate();
+    }
+  }
+
   private void softDeleteUser(Long userId) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
@@ -474,16 +519,6 @@ class PostMapperTest {
         )) {
       statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.of(2026, 4, 24, 12, 0)));
       statement.setLong(2, groupId);
-      statement.executeUpdate();
-    }
-  }
-
-  private void softDeletePost(Long postId) throws Exception {
-    try (Connection connection = dataSource.getConnection();
-        PreparedStatement statement = connection.prepareStatement(
-            "UPDATE posts SET deleted_at = CURRENT_TIMESTAMP WHERE post_id = ?"
-        )) {
-      statement.setLong(1, postId);
       statement.executeUpdate();
     }
   }
