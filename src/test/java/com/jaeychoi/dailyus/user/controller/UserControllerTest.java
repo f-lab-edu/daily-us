@@ -2,8 +2,8 @@ package com.jaeychoi.dailyus.user.controller;
 
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -19,8 +19,8 @@ import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
 import com.jaeychoi.dailyus.user.dto.UserProfileResponse;
 import com.jaeychoi.dailyus.user.service.UserFollowService;
-import com.jaeychoi.dailyus.user.service.UserProfileService;
 import com.jaeychoi.dailyus.user.service.UserPostService;
+import com.jaeychoi.dailyus.user.service.UserProfileService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,9 +48,8 @@ class UserControllerTest {
 
   @BeforeEach
   void setUp() {
-    mockMvc = MockMvcBuilders.standaloneSetup(new UserController(userFollowService,
-            userProfileService))
-    mockMvc = MockMvcBuilders.standaloneSetup(new UserController(userFollowService, userPostService))
+    mockMvc = MockMvcBuilders.standaloneSetup(
+            new UserController(userFollowService, userProfileService, userPostService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setMessageConverters(new JacksonJsonHttpMessageConverter())

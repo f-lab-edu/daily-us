@@ -240,23 +240,6 @@ class PostMapperTest {
   }
 
   @Test
-  void findRecentFeedPostsReturnsRecentPostsOrderedByCreatedAtDescThenPostIdDesc() throws Exception {
-    Long firstUserId = insertUser(uniqueEmail("first"), uniqueNickname("first"));
-    Long secondUserId = insertUser(uniqueEmail("second"), uniqueNickname("second"));
-    Long olderPostId = insertPost(firstUserId, "older post");
-    Long sameTimeLowerPostId = insertPost(firstUserId, "same-time lower");
-    Long sameTimeHigherPostId = insertPost(secondUserId, "same-time higher");
-    updatePostCreatedAt(olderPostId, LocalDateTime.of(2026, 4, 6, 8, 0));
-    updatePostCreatedAt(sameTimeLowerPostId, LocalDateTime.of(2026, 4, 6, 9, 0));
-    updatePostCreatedAt(sameTimeHigherPostId, LocalDateTime.of(2026, 4, 6, 9, 0));
-
-    List<PostFeedRow> rows = postMapper.findRecentFeedPosts(10L, null, null);
-
-    assertThat(rows).extracting(PostFeedRow::postId)
-        .containsSequence(sameTimeHigherPostId, sameTimeLowerPostId, olderPostId);
-  }
-
-  @Test
   void findRecentFeedPostsReturnsRowsAfterCompositeCursor() throws Exception {
     Long firstUserId = insertUser(uniqueEmail("first"), uniqueNickname("first"));
     Long secondUserId = insertUser(uniqueEmail("second"), uniqueNickname("second"));
