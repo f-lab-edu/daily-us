@@ -5,6 +5,7 @@ CREATE TABLE users (
     nickname VARCHAR(100) NOT NULL,
     follower_count BIGINT NOT NULL DEFAULT 0,
     followee_count BIGINT NOT NULL DEFAULT 0,
+    intro VARCHAR(500) NULL,
     profile_image VARCHAR(500) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

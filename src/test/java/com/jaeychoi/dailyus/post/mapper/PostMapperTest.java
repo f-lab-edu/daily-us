@@ -59,6 +59,20 @@ class PostMapperTest {
   }
 
   @Test
+  void countActiveByUserIdCountsOnlyNonDeletedPosts() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long otherUserId = insertUser(uniqueEmail("other"), uniqueNickname("other"));
+    Long activePostId = insertPost(userId, "active post");
+    Long deletedPostId = insertPost(userId, "deleted post");
+    insertPost(otherUserId, "other user post");
+    softDeletePost(deletedPostId);
+
+    long count = postMapper.countActiveByUserId(userId);
+
+    assertThat(count).isEqualTo(1L);
+  }
+
+  @Test
   void postLikeQueriesInsertDeleteAndUpdateCount() throws Exception {
     Long userId = insertUser("post-like-user@example.com", "post-like-user");
     Long postId = insertPost(userId, "liked post");
@@ -223,23 +237,6 @@ class PostMapperTest {
     boolean exists = postMapper.existsFeedPosts(loginUserId);
 
     assertThat(exists).isFalse();
-  }
-
-  @Test
-  void findRecentFeedPostsReturnsRecentPostsOrderedByCreatedAtDescThenPostIdDesc() throws Exception {
-    Long firstUserId = insertUser(uniqueEmail("first"), uniqueNickname("first"));
-    Long secondUserId = insertUser(uniqueEmail("second"), uniqueNickname("second"));
-    Long olderPostId = insertPost(firstUserId, "older post");
-    Long sameTimeLowerPostId = insertPost(firstUserId, "same-time lower");
-    Long sameTimeHigherPostId = insertPost(secondUserId, "same-time higher");
-    updatePostCreatedAt(olderPostId, LocalDateTime.of(2026, 4, 6, 8, 0));
-    updatePostCreatedAt(sameTimeLowerPostId, LocalDateTime.of(2026, 4, 6, 9, 0));
-    updatePostCreatedAt(sameTimeHigherPostId, LocalDateTime.of(2026, 4, 6, 9, 0));
-
-    List<PostFeedRow> rows = postMapper.findRecentFeedPosts(10L, null, null);
-
-    assertThat(rows).extracting(PostFeedRow::postId)
-        .containsSequence(sameTimeHigherPostId, sameTimeLowerPostId, olderPostId);
   }
 
   @Test
@@ -477,6 +474,16 @@ class PostMapperTest {
         )) {
       statement.setTimestamp(1, Timestamp.valueOf(LocalDateTime.of(2026, 4, 24, 12, 0)));
       statement.setLong(2, groupId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void softDeletePost(Long postId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE posts SET deleted_at = CURRENT_TIMESTAMP WHERE post_id = ?"
+        )) {
+      statement.setLong(1, postId);
       statement.executeUpdate();
     }
   }

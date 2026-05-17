@@ -23,6 +23,7 @@ public class User {
     private Long followerCount = 0L;
     @Builder.Default
     private Long followeeCount = 0L;
+    private String intro = null;
     private String profileImage = null;
     private LocalDateTime createdAt = null;
     private LocalDateTime updatedAt = null;
