@@ -39,5 +39,7 @@ public interface PostMapper {
 
   List<PostFeedRow> findFeedPostsByIds(List<Long> postIds);
 
+  List<PostFeedRow> findPostsByUserId(Long userId, Long size, LocalDateTime createdAt, Long postId);
+
   List<PostImageRow> findImagesByPostIds(List<Long> postIds);
 }
