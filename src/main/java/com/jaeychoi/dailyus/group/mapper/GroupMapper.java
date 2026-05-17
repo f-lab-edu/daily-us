@@ -1,12 +1,12 @@
 package com.jaeychoi.dailyus.group.mapper;
 
 import com.jaeychoi.dailyus.group.domain.Group;
-import com.jaeychoi.dailyus.user.dto.UserGroupItemResponse;
-import java.util.List;
+import com.jaeychoi.dailyus.group.dto.GroupDetailRow;
+import com.jaeychoi.dailyus.group.dto.GroupListRow;
 import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
+import com.jaeychoi.dailyus.user.dto.UserGroupItemResponse;
 import java.time.LocalDateTime;
 import java.util.List;
-import com.jaeychoi.dailyus.group.dto.GroupDetailRow;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
@@ -30,6 +30,8 @@ public interface GroupMapper {
       LocalDateTime endAt);
 
   List<Long> findMembersByMemberId(Long memberId);
+
+  List<GroupListRow> findGroupList(Long size, LocalDateTime createdAt, Long groupId);
 
   List<UserGroupItemResponse> findJoinedGroupsByUserId(Long userId);
 }
