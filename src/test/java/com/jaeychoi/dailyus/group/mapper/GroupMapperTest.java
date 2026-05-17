@@ -9,6 +9,7 @@ import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
 import com.jaeychoi.dailyus.user.dto.UserGroupItemResponse;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
@@ -364,6 +365,32 @@ class GroupMapperTest {
     assertThat(group.groupId()).isEqualTo(activeGroup.getGroupId());
     assertThat(group.name()).isEqualTo("daily-us");
     assertThat(group.groupImage()).isEqualTo("https://example.com/group.png");
+  }
+
+  @Test
+  void findMembersByGroupIdReturnsActiveMembersOnly() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Long activeMemberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
+    Long deletedMemberId = insertUser(uniqueEmail("deleted"), uniqueNickname("deleted"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    groupMapper.insert(group);
+    groupMapper.insertMember(group.getGroupId(), ownerId);
+    groupMapper.insertMember(group.getGroupId(), activeMemberId);
+    groupMapper.insertMember(group.getGroupId(), deletedMemberId);
+    jdbcTemplate.update(
+        "UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+        deletedMemberId
+    );
+
+    var rows = groupMapper.findMembersByGroupId(group.getGroupId());
+
+    assertThat(rows).extracting(GroupMemberResponse::userId)
+        .containsExactly(ownerId, activeMemberId);
   }
 
   private Long insertUser(String email, String nickname) {

@@ -9,14 +9,17 @@ import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
 import com.jaeychoi.dailyus.group.dto.GroupDetailResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
 import com.jaeychoi.dailyus.group.dto.GroupListResponse;
+import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupDetailService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
 import com.jaeychoi.dailyus.group.service.GroupListService;
+import com.jaeychoi.dailyus.group.service.GroupMembersService;
 import com.jaeychoi.dailyus.group.service.GroupRankService;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -38,6 +41,9 @@ public class GroupController {
   private final GroupDetailService groupDetailService;
   private final GroupJoinService groupJoinService;
   private final GroupListService groupListService;
+  private final GroupRankService groupRankService;
+  private final GroupMembersService groupMembersService;
+
 
   @GetMapping
   @AuthRequired
@@ -50,7 +56,13 @@ public class GroupController {
   ) {
     return ApiResponse.success(groupListService.getGroups(createdAt, groupId, size));
   }
-  private final GroupRankService groupRankService;
+
+  @GetMapping("/{groupId}/members")
+  @AuthRequired
+  public ApiResponse<List<GroupMemberResponse>> getGroupMembers(@PathVariable Long groupId) {
+    return ApiResponse.success(groupMembersService.getMembers(groupId));
+  }
+
 
   @GetMapping("/{groupId}")
   @AuthRequired
@@ -79,7 +91,8 @@ public class GroupController {
 
   @GetMapping("/{groupId}/rank")
   @AuthRequired
-  public ApiResponse<GroupRankResponse> getRank(@PathVariable Long groupId, @AuthenticatedUser CurrentUser user) {
+  public ApiResponse<GroupRankResponse> getRank(@PathVariable Long groupId,
+      @AuthenticatedUser CurrentUser user) {
     GroupRankResponse response = groupRankService.getRank(groupId, user.userId());
     return ApiResponse.success(response);
   }

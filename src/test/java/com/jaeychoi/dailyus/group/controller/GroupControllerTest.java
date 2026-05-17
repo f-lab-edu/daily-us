@@ -21,11 +21,13 @@ import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
 import com.jaeychoi.dailyus.group.dto.GroupListItemResponse;
 import com.jaeychoi.dailyus.group.dto.GroupListResponse;
 import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
+import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupDetailService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
 import com.jaeychoi.dailyus.group.service.GroupListService;
+import com.jaeychoi.dailyus.group.service.GroupMembersService;
 import com.jaeychoi.dailyus.group.service.GroupRankService;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -59,6 +61,9 @@ class GroupControllerTest {
   @Mock
   private GroupRankService groupRankService;
 
+  @Mock
+  private GroupMembersService groupMembersService;
+
   private MockMvc mockMvc;
 
   private ObjectMapper objectMapper;
@@ -70,12 +75,40 @@ class GroupControllerTest {
 
     objectMapper = new ObjectMapper();
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new GroupController(groupCreateService, groupDetailService, groupJoinService, groupRankService))
+            new GroupController(groupCreateService, groupDetailService, groupJoinService,
+                groupListService, groupRankService, groupMembersService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
         .build();
+  }
+
+  @Test
+  void getGroupMembersReturnsOkResponse() throws Exception {
+    when(groupMembersService.getMembers(1L)).thenReturn(List.of(
+        new GroupMemberResponse(2L, "tester", "https://example.com/profile.png"),
+        new GroupMemberResponse(3L, "member", null)
+    ));
+
+    mockMvc.perform(get("/api/v1/groups/1/members"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data[0].userId").value(2L))
+        .andExpect(jsonPath("$.data[0].nickname").value("tester"))
+        .andExpect(jsonPath("$.data[1].userId").value(3L));
+  }
+
+  @Test
+  void getGroupMembersReturnsNotFoundWhenGroupDoesNotExist() throws Exception {
+    when(groupMembersService.getMembers(1L)).thenThrow(
+        new BaseException(ErrorCode.GROUP_NOT_FOUND));
+
+    mockMvc.perform(get("/api/v1/groups/1/members"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value(ErrorCode.GROUP_NOT_FOUND.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_NOT_FOUND.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
   }
 
   @Test
@@ -126,7 +159,8 @@ class GroupControllerTest {
         true,
         5L
     );
-    when(groupListService.getGroups(LocalDateTime.of(2026, 5, 5, 9, 0), 8L, 5L)).thenReturn(response);
+    when(groupListService.getGroups(LocalDateTime.of(2026, 5, 5, 9, 0), 8L, 5L)).thenReturn(
+        response);
 
     mockMvc.perform(get("/api/v1/groups")
             .queryParam("createdAt", "2026-05-05T09:00:00")
