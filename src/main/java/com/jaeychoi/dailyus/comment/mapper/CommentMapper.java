@@ -21,6 +21,7 @@ public interface CommentMapper {
 
   List<CommentRow> findRepliesByParentIds(
       @Param("parentIds") List<Long> parentIds,
-      @Param("userId") Long userId
+      @Param("userId") Long userId,
+      @Param("limit") Long limit
   );
 }

@@ -79,7 +79,7 @@ class CommentGetServiceTest {
     when(commentMapper.existsActivePostById(postId)).thenReturn(true);
     when(commentMapper.findComments(postId, userId, 3L, null, null))
         .thenReturn(List.of(firstComment, secondComment, thirdComment));
-    when(commentMapper.findRepliesByParentIds(List.of(101L, 100L), userId))
+    when(commentMapper.findRepliesByParentIds(List.of(101L, 100L), userId, 3L))
         .thenReturn(List.of(reply));
 
     CommentResponse response = commentGetService.getComments(postId, userId, null, null, 2L);

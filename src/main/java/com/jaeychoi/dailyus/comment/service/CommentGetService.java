@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 public class CommentGetService {
 
   private static final long DEFAULT_SIZE = 10L;
+  private static final long DEFAULT_REPLY_SIZE = 3L;
 
   private final CommentMapper commentMapper;
 
@@ -100,7 +101,7 @@ public class CommentGetService {
         .map(CommentRow::commentId)
         .toList();
 
-    return commentMapper.findRepliesByParentIds(parentIds, userId).stream()
+    return commentMapper.findRepliesByParentIds(parentIds, userId, DEFAULT_REPLY_SIZE).stream()
         .collect(Collectors.groupingBy(
             CommentRow::parentId,
             LinkedHashMap::new,

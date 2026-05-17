@@ -59,7 +59,7 @@ class CommentMapperTest {
   }
 
   @Test
-  void findRepliesByParentIdsReturnsRepliesGroupedByParent() throws Exception {
+  void findRepliesByParentIdsReturnsRepliesGroupedByParentWithinLimit() throws Exception {
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
     Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
     Long replierId = insertUser(uniqueEmail("replier"), uniqueNickname("replier"));
@@ -68,20 +68,25 @@ class CommentMapperTest {
     Long parentTwoId = insertComment(authorId, postId, null, "parent-2");
     Long firstReplyId = insertComment(replierId, postId, parentOneId, "reply-1");
     Long secondReplyId = insertComment(loginUserId, postId, parentOneId, "reply-2");
+    Long thirdReplyId = insertComment(replierId, postId, parentOneId, "reply-3");
+    Long fourthReplyId = insertComment(authorId, postId, parentOneId, "reply-4");
     Long otherReplyId = insertComment(replierId, postId, parentTwoId, "reply-3");
     updateCommentCreatedAt(firstReplyId, LocalDateTime.of(2026, 4, 6, 8, 0));
     updateCommentCreatedAt(secondReplyId, LocalDateTime.of(2026, 4, 6, 9, 0));
+    updateCommentCreatedAt(thirdReplyId, LocalDateTime.of(2026, 4, 6, 10, 0));
+    updateCommentCreatedAt(fourthReplyId, LocalDateTime.of(2026, 4, 6, 11, 0));
     updateCommentCreatedAt(otherReplyId, LocalDateTime.of(2026, 4, 6, 7, 0));
     insertCommentLike(secondReplyId, loginUserId);
 
     List<CommentRow> rows =
-        commentMapper.findRepliesByParentIds(List.of(parentOneId, parentTwoId), loginUserId);
+        commentMapper.findRepliesByParentIds(List.of(parentOneId, parentTwoId), loginUserId, 3L);
 
     assertThat(rows).extracting(CommentRow::commentId)
-        .containsExactly(secondReplyId, firstReplyId, otherReplyId);
+        .containsExactly(fourthReplyId, thirdReplyId, secondReplyId, otherReplyId);
     assertThat(rows).extracting(CommentRow::parentId)
-        .containsExactly(parentOneId, parentOneId, parentTwoId);
-    assertThat(rows.get(0).likedByMe()).isTrue();
+        .containsExactly(parentOneId, parentOneId, parentOneId, parentTwoId);
+    assertThat(rows).extracting(CommentRow::likedByMe)
+        .containsExactly(false, false, true, false);
   }
 
   private Long insertUser(String email, String nickname) throws Exception {
