@@ -18,17 +18,16 @@ import com.jaeychoi.dailyus.group.dto.GroupCreateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
 import com.jaeychoi.dailyus.group.dto.GroupDetailResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
-import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import com.jaeychoi.dailyus.group.dto.GroupListItemResponse;
 import com.jaeychoi.dailyus.group.dto.GroupListResponse;
 import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
+import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupDetailService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
-import com.jaeychoi.dailyus.group.service.GroupMembersService;
-import java.util.List;
 import com.jaeychoi.dailyus.group.service.GroupListService;
+import com.jaeychoi.dailyus.group.service.GroupMembersService;
 import com.jaeychoi.dailyus.group.service.GroupRankService;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -76,7 +75,8 @@ class GroupControllerTest {
 
     objectMapper = new ObjectMapper();
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new GroupController(groupCreateService, groupDetailService, groupJoinService, groupListService, groupRankService, groupMembersService))
+            new GroupController(groupCreateService, groupDetailService, groupJoinService,
+                groupListService, groupRankService, groupMembersService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
@@ -101,7 +101,8 @@ class GroupControllerTest {
 
   @Test
   void getGroupMembersReturnsNotFoundWhenGroupDoesNotExist() throws Exception {
-    when(groupMembersService.getMembers(1L)).thenThrow(new BaseException(ErrorCode.GROUP_NOT_FOUND));
+    when(groupMembersService.getMembers(1L)).thenThrow(
+        new BaseException(ErrorCode.GROUP_NOT_FOUND));
 
     mockMvc.perform(get("/api/v1/groups/1/members"))
         .andExpect(status().isNotFound())
@@ -158,7 +159,8 @@ class GroupControllerTest {
         true,
         5L
     );
-    when(groupListService.getGroups(LocalDateTime.of(2026, 5, 5, 9, 0), 8L, 5L)).thenReturn(response);
+    when(groupListService.getGroups(LocalDateTime.of(2026, 5, 5, 9, 0), 8L, 5L)).thenReturn(
+        response);
 
     mockMvc.perform(get("/api/v1/groups")
             .queryParam("createdAt", "2026-05-05T09:00:00")
