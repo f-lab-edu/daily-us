@@ -14,7 +14,6 @@ import org.springframework.stereotype.Repository;
 public class PostFeedRepository {
 
   private static final String KEY_PREFIX = "feed:user:";
-  private static final int MAX_CACHED_POST_COUNT = 100;
   private static final DefaultRedisScript<Long> ADD_AND_TRIM_SCRIPT = new DefaultRedisScript<>(
       """
           local member = ARGV[1]
@@ -97,8 +96,13 @@ public class PostFeedRepository {
     return postIds.isEmpty() ? null : postIds;
   }
 
-  public void addPostIdToFeeds(List<Long> userIds, Long postId, LocalDateTime createdAt) {
-    if (userIds == null || userIds.isEmpty() || postId == null || createdAt == null) {
+  public void addPostIdToFeeds(
+      List<Long> userIds,
+      Long postId,
+      LocalDateTime createdAt,
+      long maxCount
+  ) {
+    if (userIds == null || userIds.isEmpty() || postId == null || createdAt == null || maxCount <= 0) {
       return;
     }
 
@@ -116,7 +120,7 @@ public class PostFeedRepository {
         keys,
         String.valueOf(postId),
         String.valueOf(toEpochMilli(createdAt)),
-        String.valueOf(MAX_CACHED_POST_COUNT)
+        String.valueOf(maxCount)
     );
   }
 

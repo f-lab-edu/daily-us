@@ -10,7 +10,6 @@ import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedRow;
 import com.jaeychoi.dailyus.post.dto.PostImageRow;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
-import com.jaeychoi.dailyus.post.repository.PostFeedRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -26,7 +25,7 @@ class PostFeedServiceTest {
   private PostMapper postMapper;
 
   @Mock
-  private PostFeedRepository postFeedRepository;
+  private PostFeedCacheService postFeedCacheService;
 
   @InjectMocks
   private PostFeedService postFeedService;
@@ -62,7 +61,7 @@ class PostFeedServiceTest {
         LocalDateTime.of(2026, 4, 6, 9, 0)
     );
 
-    when(postFeedRepository.findByUserIdAndCursor(userId, null, 3L))
+    when(postFeedCacheService.findCachedPostIds(userId, null, 3L))
         .thenReturn(List.of(10L, 9L, 8L));
     when(postMapper.findFeedPostsByIds(List.of(10L, 9L, 8L))).thenReturn(
         List.of(firstRow, secondRow, thirdRow));
@@ -75,9 +74,7 @@ class PostFeedServiceTest {
 
     PostFeedResponse response = postFeedService.getFeed(userId, null, null, 2L);
 
-    verify(postMapper, never()).existsFeedPosts(userId);
-    verify(postMapper, never()).findFeedPosts(userId, 3L, null, null);
-    verify(postMapper, never()).findRecentFeedPosts(3L, null, null);
+    verify(postFeedCacheService, never()).loadFeedRows(userId, null, null, 3L);
     assertThat(response.lastCreatedAt()).isEqualTo(LocalDateTime.of(2026, 4, 6, 9, 0));
     assertThat(response.lastPostId()).isEqualTo(9L);
     assertThat(response.hasNext()).isTrue();
@@ -122,9 +119,8 @@ class PostFeedServiceTest {
         LocalDateTime.of(2026, 4, 6, 8, 0)
     );
 
-    when(postFeedRepository.findByUserIdAndCursor(userId, null, 3L)).thenReturn(null);
-    when(postMapper.existsFeedPosts(userId)).thenReturn(true);
-    when(postMapper.findFeedPosts(userId, 3L, null, null))
+    when(postFeedCacheService.findCachedPostIds(userId, null, 3L)).thenReturn(null);
+    when(postFeedCacheService.loadFeedRows(userId, null, null, 3L))
         .thenReturn(List.of(firstRow, secondRow, thirdRow));
     when(postMapper.findImagesByPostIds(List.of(10L, 9L))).thenReturn(List.of(
         new PostImageRow(10L, "https://cdn.example.com/10-1.png"),
@@ -134,7 +130,7 @@ class PostFeedServiceTest {
 
     PostFeedResponse response = postFeedService.getFeed(userId, null, null, 2L);
 
-    verify(postMapper, never()).findRecentFeedPosts(3L, null, null);
+    verify(postFeedCacheService).loadFeedRows(userId, null, null, 3L);
     assertThat(response.lastCreatedAt()).isEqualTo(LocalDateTime.of(2026, 4, 6, 9, 0));
     assertThat(response.lastPostId()).isEqualTo(9L);
     assertThat(response.hasNext()).isTrue();
@@ -162,14 +158,14 @@ class PostFeedServiceTest {
         LocalDateTime.of(2026, 4, 6, 8, 0)
     );
 
-    when(postFeedRepository.findByUserIdAndCursor(userId, 15L, 11L)).thenReturn(null);
-    when(postMapper.existsFeedPosts(userId)).thenReturn(false);
-    when(postMapper.findRecentFeedPosts(11L, cursorCreatedAt, 15L)).thenReturn(List.of(recentRow));
+    when(postFeedCacheService.findCachedPostIds(userId, 15L, 11L)).thenReturn(null);
+    when(postFeedCacheService.loadFeedRows(userId, cursorCreatedAt, 15L, 11L))
+        .thenReturn(List.of(recentRow));
     when(postMapper.findImagesByPostIds(List.of(8L))).thenReturn(List.of());
 
     PostFeedResponse response = postFeedService.getFeed(userId, cursorCreatedAt, 15L, 10L);
 
-    verify(postMapper).findRecentFeedPosts(11L, cursorCreatedAt, 15L);
+    verify(postFeedCacheService).loadFeedRows(userId, cursorCreatedAt, 15L, 11L);
     assertThat(response.items()).hasSize(1);
     assertThat(response.items().get(0).postId()).isEqualTo(8L);
     assertThat(response.lastCreatedAt()).isEqualTo(LocalDateTime.of(2026, 4, 6, 8, 0));
@@ -183,13 +179,12 @@ class PostFeedServiceTest {
     Long userId = 1L;
     LocalDateTime cursorCreatedAt = LocalDateTime.of(2026, 4, 6, 9, 0);
 
-    when(postFeedRepository.findByUserIdAndCursor(userId, 9L, 11L)).thenReturn(null);
-    when(postMapper.existsFeedPosts(userId)).thenReturn(true);
-    when(postMapper.findFeedPosts(userId, 11L, cursorCreatedAt, 9L)).thenReturn(List.of());
+    when(postFeedCacheService.findCachedPostIds(userId, 9L, 11L)).thenReturn(null);
+    when(postFeedCacheService.loadFeedRows(userId, cursorCreatedAt, 9L, 11L))
+        .thenReturn(List.of());
 
     PostFeedResponse response = postFeedService.getFeed(userId, cursorCreatedAt, 9L, 10L);
 
-    verify(postMapper, never()).findRecentFeedPosts(11L, cursorCreatedAt, 9L);
     verify(postMapper, never()).findImagesByPostIds(anyList());
     assertThat(response.items()).isEmpty();
     assertThat(response.size()).isEqualTo(0L);
