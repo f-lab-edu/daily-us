@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -21,6 +22,7 @@ import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
 import com.jaeychoi.dailyus.user.dto.UserGroupItemResponse;
 import com.jaeychoi.dailyus.user.dto.UserGroupResponse;
 import com.jaeychoi.dailyus.user.dto.UserProfileResponse;
+import com.jaeychoi.dailyus.user.dto.UserProfileUpdateRequest;
 import com.jaeychoi.dailyus.user.service.UserActivityService;
 import com.jaeychoi.dailyus.user.service.UserFollowService;
 import com.jaeychoi.dailyus.user.service.UserMyGroupService;
@@ -173,7 +175,7 @@ class UserControllerTest {
         1L,
         "user@example.com",
         "dailyus",
-        "운동 기록 중입니다.",
+        "sharing daily workouts",
         "https://cdn.example.com/profile.png",
         3L,
         7L,
@@ -189,11 +191,65 @@ class UserControllerTest {
         .andExpect(jsonPath("$.data.userId").value(1L))
         .andExpect(jsonPath("$.data.email").value("user@example.com"))
         .andExpect(jsonPath("$.data.nickname").value("dailyus"))
-        .andExpect(jsonPath("$.data.intro").value("운동 기록 중입니다."))
+        .andExpect(jsonPath("$.data.intro").value("sharing daily workouts"))
         .andExpect(jsonPath("$.data.profileImage").value("https://cdn.example.com/profile.png"))
         .andExpect(jsonPath("$.data.followerCount").value(3L))
         .andExpect(jsonPath("$.data.followeeCount").value(7L))
         .andExpect(jsonPath("$.data.postCount").value(5L));
+  }
+
+  @Test
+  void updateMyProfileReturnsOkResponse() throws Exception {
+    UserProfileResponse response = new UserProfileResponse(
+        1L,
+        "user@example.com",
+        "dailyus-new",
+        "updated intro",
+        "https://cdn.example.com/profile.png",
+        3L,
+        7L,
+        5L
+    );
+    when(userProfileService.updateProfile(
+        1L,
+        new UserProfileUpdateRequest(
+            "dailyus-new",
+            "updated intro",
+            "https://cdn.example.com/profile.png"
+        ))).thenReturn(response);
+
+    mockMvc.perform(patch("/api/v1/users/me")
+            .contentType("application/json")
+            .content("""
+                {
+                  "nickname": "dailyus-new",
+                  "intro": "updated intro",
+                  "profileImage": "https://cdn.example.com/profile.png"
+                }
+                """)
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.nickname").value("dailyus-new"))
+        .andExpect(jsonPath("$.data.intro").value("updated intro"))
+        .andExpect(jsonPath("$.data.profileImage").value("https://cdn.example.com/profile.png"));
+  }
+
+  @Test
+  void updateMyProfileReturnsBadRequestWhenNicknameIsBlank() throws Exception {
+    mockMvc.perform(patch("/api/v1/users/me")
+            .contentType("application/json")
+            .content("""
+                {
+                  "nickname": "   "
+                }
+                """)
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+        .andExpect(jsonPath("$.message").value("Invalid input."));
   }
 
   @Test
