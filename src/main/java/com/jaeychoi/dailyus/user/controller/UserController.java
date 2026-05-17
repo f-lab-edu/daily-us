@@ -9,19 +9,23 @@ import com.jaeychoi.dailyus.user.dto.UserActivityResponse;
 import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
 import com.jaeychoi.dailyus.user.dto.UserGroupResponse;
 import com.jaeychoi.dailyus.user.dto.UserProfileResponse;
+import com.jaeychoi.dailyus.user.dto.UserProfileUpdateRequest;
 import com.jaeychoi.dailyus.user.service.UserActivityService;
 import com.jaeychoi.dailyus.user.service.UserFollowService;
 import com.jaeychoi.dailyus.user.service.UserMyGroupService;
 import com.jaeychoi.dailyus.user.service.UserPostService;
 import com.jaeychoi.dailyus.user.service.UserProfileService;
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -61,6 +65,14 @@ public class UserController {
     return ApiResponse.success(userProfileService.getProfile(user.userId()));
   }
 
+  @PatchMapping("/me")
+  @AuthRequired
+  public ApiResponse<UserProfileResponse> updateMyProfile(
+      @AuthenticatedUser CurrentUser user,
+      @Valid @RequestBody UserProfileUpdateRequest request) {
+    return ApiResponse.success(userProfileService.updateProfile(user.userId(), request));
+  }
+
   private final UserPostService userPostService;
 
   @GetMapping("/me/posts")
@@ -78,6 +90,7 @@ public class UserController {
   @GetMapping("/{userId}/posts")
   @AuthRequired
   public ApiResponse<PostFeedResponse> getUserPosts(
+      @AuthenticatedUser CurrentUser user,
       @PathVariable("userId") Long targetUserId,
       @RequestParam(required = false)
       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
