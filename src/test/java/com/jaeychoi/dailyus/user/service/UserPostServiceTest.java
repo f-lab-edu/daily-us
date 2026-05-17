@@ -111,4 +111,64 @@ class UserPostServiceTest {
         .extracting("errorCode")
         .isEqualTo(ErrorCode.USER_NOT_FOUND);
   }
+
+  @Test
+  void getPostsReturnsPagedPostsWithImages() {
+    Long targetUserId = 2L;
+    PostFeedRow firstRow = new PostFeedRow(
+        20L,
+        targetUserId,
+        "target",
+        "https://example.com/target.png",
+        "target-content-1",
+        5L,
+        LocalDateTime.of(2026, 5, 2, 10, 0)
+    );
+    PostFeedRow secondRow = new PostFeedRow(
+        19L,
+        targetUserId,
+        "target",
+        "https://example.com/target.png",
+        "target-content-2",
+        2L,
+        LocalDateTime.of(2026, 5, 2, 9, 0)
+    );
+    PostFeedRow thirdRow = new PostFeedRow(
+        18L,
+        targetUserId,
+        "target",
+        "https://example.com/target.png",
+        "target-content-3",
+        0L,
+        LocalDateTime.of(2026, 5, 2, 8, 0)
+    );
+
+    when(userMapper.existsActiveById(targetUserId)).thenReturn(true);
+    when(postMapper.findPostsByUserId(targetUserId, 3L, null, null))
+        .thenReturn(List.of(firstRow, secondRow, thirdRow));
+    when(postMapper.findImagesByPostIds(List.of(20L, 19L))).thenReturn(List.of(
+        new PostImageRow(20L, "https://cdn.example.com/20-1.png"),
+        new PostImageRow(19L, "https://cdn.example.com/19-1.png")
+    ));
+
+    PostFeedResponse response = userPostService.getPosts(targetUserId, null, null, 2L);
+
+    assertThat(response.items()).hasSize(2);
+    assertThat(response.items().get(0).postId()).isEqualTo(20L);
+    assertThat(response.items().get(1).postId()).isEqualTo(19L);
+    assertThat(response.lastCreatedAt()).isEqualTo(LocalDateTime.of(2026, 5, 2, 9, 0));
+    assertThat(response.lastPostId()).isEqualTo(19L);
+    assertThat(response.hasNext()).isTrue();
+    assertThat(response.size()).isEqualTo(2L);
+  }
+
+  @Test
+  void getPostsThrowsWhenTargetUserIsNotActive() {
+    when(userMapper.existsActiveById(2L)).thenReturn(false);
+
+    assertThatThrownBy(() -> userPostService.getPosts(2L, null, null, 10L))
+        .isInstanceOf(BaseException.class)
+        .extracting("errorCode")
+        .isEqualTo(ErrorCode.USER_NOT_FOUND);
+  }
 }

@@ -27,10 +27,24 @@ public class UserPostService {
   private final PostMapper postMapper;
 
   public PostFeedResponse getMyPosts(Long userId, LocalDateTime createdAt, Long postId, Long size) {
-    validateUser(userId);
+    return getPosts(userId, createdAt, postId, size);
+  }
+
+  public PostFeedResponse getPosts(
+      Long targetUserId,
+      LocalDateTime createdAt,
+      Long postId,
+      Long size
+  ) {
+    validateUser(targetUserId);
 
     long pageSize = resolvePageSize(size);
-    List<PostFeedRow> rows = postMapper.findPostsByUserId(userId, pageSize + 1, createdAt, postId);
+    List<PostFeedRow> rows = postMapper.findPostsByUserId(
+        targetUserId,
+        pageSize + 1,
+        createdAt,
+        postId
+    );
     boolean hasNext = rows.size() > pageSize;
     List<PostFeedRow> pageRows = hasNext ? rows.subList(0, (int) pageSize) : rows;
     Map<Long, List<String>> imageUrlsByPostId = loadImageUrlsByPostId(pageRows);
