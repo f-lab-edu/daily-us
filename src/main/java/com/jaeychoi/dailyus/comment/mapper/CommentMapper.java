@@ -1,5 +1,6 @@
 package com.jaeychoi.dailyus.comment.mapper;
 
+import com.jaeychoi.dailyus.comment.domain.Comment;
 import com.jaeychoi.dailyus.comment.dto.CommentRow;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,5 +24,12 @@ public interface CommentMapper {
       @Param("parentIds") List<Long> parentIds,
       @Param("userId") Long userId,
       @Param("limit") Long limit
+  );
+
+  Comment findActiveCommentById(@Param("commentId") Long commentId);
+
+  int updateContent(
+      @Param("commentId") Long commentId,
+      @Param("content") String content
   );
 }

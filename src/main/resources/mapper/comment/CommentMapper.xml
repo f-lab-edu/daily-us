@@ -4,6 +4,18 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.jaeychoi.dailyus.comment.mapper.CommentMapper">
 
+    <resultMap id="commentResultMap" type="com.jaeychoi.dailyus.comment.domain.Comment">
+        <id property="commentId" column="comment_id"/>
+        <result property="content" column="content"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+        <result property="likeCount" column="like_count"/>
+        <result property="userId" column="user_id"/>
+        <result property="postId" column="post_id"/>
+        <result property="parentId" column="parent_id"/>
+    </resultMap>
+
     <resultMap id="commentRowResultMap" type="com.jaeychoi.dailyus.comment.dto.CommentRow">
         <constructor>
             <idArg column="comment_id" javaType="java.lang.Long"/>
@@ -14,6 +26,7 @@
             <arg column="like_count" javaType="java.lang.Long"/>
             <arg column="liked_by_me" javaType="java.lang.Boolean"/>
             <arg column="created_at" javaType="java.time.LocalDateTime"/>
+            <arg column="edited" javaType="java.lang.Boolean"/>
             <arg column="parent_id" javaType="java.lang.Long"/>
         </constructor>
     </resultMap>
@@ -41,6 +54,7 @@
                      AND cl.user_id = #{userId}
                ) AS liked_by_me,
                c.created_at,
+               CASE WHEN c.updated_at > c.created_at THEN TRUE ELSE FALSE END AS edited,
                c.parent_id
         FROM comments c
         JOIN users u ON u.user_id = c.user_id
@@ -64,6 +78,7 @@
                ranked.like_count,
                ranked.liked_by_me,
                ranked.created_at,
+               ranked.edited,
                ranked.parent_id
         FROM (
             SELECT c.comment_id,
@@ -79,6 +94,7 @@
                          AND cl.user_id = #{userId}
                    ) AS liked_by_me,
                    c.created_at,
+                   CASE WHEN c.updated_at > c.created_at THEN TRUE ELSE FALSE END AS edited,
                    c.parent_id,
                    ROW_NUMBER() OVER (
                        PARTITION BY c.parent_id
@@ -96,5 +112,28 @@
         WHERE ranked.reply_order &lt;= #{limit}
         ORDER BY ranked.parent_id, ranked.created_at DESC, ranked.comment_id DESC
     </select>
+
+    <select id="findActiveCommentById" resultMap="commentResultMap">
+        SELECT comment_id,
+               content,
+               created_at,
+               updated_at,
+               deleted_at,
+               like_count,
+               user_id,
+               post_id,
+               parent_id
+        FROM comments
+        WHERE comment_id = #{commentId}
+          AND deleted_at IS NULL
+    </select>
+
+    <update id="updateContent">
+        UPDATE comments
+        SET content = #{content},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE comment_id = #{commentId}
+          AND deleted_at IS NULL
+    </update>
 
 </mapper>
