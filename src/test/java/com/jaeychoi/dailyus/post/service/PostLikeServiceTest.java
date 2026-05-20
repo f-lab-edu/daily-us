@@ -34,7 +34,6 @@ class PostLikeServiceTest {
   void likeCreatesPostLikeAndIncrementsCount() {
     when(postMapper.existsActiveById(10L)).thenReturn(true);
     when(postMapper.findLikeCountByPostId(10L)).thenReturn(3L);
-    when(postLikeRepository.incrementDelta(10L)).thenReturn(1L);
 
     PostLikeResponse response = postLikeService.like(1L, 10L);
 
@@ -74,12 +73,22 @@ class PostLikeServiceTest {
     when(postMapper.existsActiveById(10L)).thenReturn(true);
     when(postMapper.deleteLike(10L, 1L)).thenReturn(1);
     when(postMapper.findLikeCountByPostId(10L)).thenReturn(2L);
-    when(postLikeRepository.decrementDelta(10L)).thenReturn(-1L);
 
     PostLikeResponse response = postLikeService.unlike(1L, 10L);
 
     verify(postLikeRepository).decrementDelta(10L);
     assertThat(response).isEqualTo(new PostLikeResponse(10L, false, 1L));
+  }
+
+  @Test
+  void unlikeResponseDoesNotDropBelowZero() {
+    when(postMapper.existsActiveById(10L)).thenReturn(true);
+    when(postMapper.deleteLike(10L, 1L)).thenReturn(1);
+    when(postMapper.findLikeCountByPostId(10L)).thenReturn(0L);
+
+    PostLikeResponse response = postLikeService.unlike(1L, 10L);
+
+    assertThat(response).isEqualTo(new PostLikeResponse(10L, false, 0L));
   }
 
   @Test
