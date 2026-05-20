@@ -78,19 +78,27 @@ class PostMapperTest {
     Long postId = insertPost(userId, "liked post");
 
     assertThat(postMapper.existsActiveById(postId)).isTrue();
-    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isZero();
 
     postMapper.insertLike(postId, userId);
-    postMapper.incrementLikeCount(postId);
+    postMapper.applyLikeCountDelta(postId, 1L);
 
-    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isEqualTo(1);
     assertThat(countPostLikes(postId, userId)).isEqualTo(1);
     assertThat(findPostLikeCount(postId)).isEqualTo(1L);
 
     assertThat(postMapper.deleteLike(postId, userId)).isEqualTo(1);
-    postMapper.decrementLikeCount(postId);
+    postMapper.applyLikeCountDelta(postId, -1L);
 
-    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isZero();
+    assertThat(countPostLikes(postId, userId)).isZero();
+    assertThat(findPostLikeCount(postId)).isZero();
+  }
+
+  @Test
+  void applyLikeCountDeltaDoesNotDropBelowZero() throws Exception {
+    Long userId = insertUser("post-like-floor-user@example.com", "post-like-floor-user");
+    Long postId = insertPost(userId, "post with zero likes");
+
+    postMapper.applyLikeCountDelta(postId, -1L);
+
     assertThat(findPostLikeCount(postId)).isZero();
   }
 
