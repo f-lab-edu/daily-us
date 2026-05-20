@@ -1,6 +1,5 @@
 package com.jaeychoi.dailyus.post.repository;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -60,15 +59,10 @@ public class PostLikeRepository {
       return List.of();
     }
 
-    List<Long> postIds = new ArrayList<>();
-    for (long i = 0; i < limit; i++) {
-      String popped = redisTemplate.opsForSet().pop(DIRTY_KEY);
-      if (popped == null) {
-        break;
-      }
-      postIds.add(Long.parseLong(popped));
-    }
-    return postIds;
+    return redisTemplate.opsForSet().pop(DIRTY_KEY, limit)
+        .stream()
+        .map(Long::valueOf)
+        .toList();
   }
 
   public long drainDelta(Long postId) {
