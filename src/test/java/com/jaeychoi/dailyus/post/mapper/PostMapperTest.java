@@ -79,6 +79,16 @@ class PostMapperTest {
   }
 
   @Test
+  void applyLikeCountDeltaDoesNotDropBelowZero() throws Exception {
+    Long userId = insertUser("post-like-floor-user@example.com", "post-like-floor-user");
+    Long postId = insertPost(userId, "post with zero likes");
+
+    postMapper.applyLikeCountDelta(postId, -1L);
+
+    assertThat(findPostLikeCount(postId)).isZero();
+  }
+
+  @Test
   void findFeedPostsReturnsPostsFromFolloweesAndGroupMembers() throws Exception {
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
     Long followeeId = insertUser(uniqueEmail("followee"), uniqueNickname("followee"));
