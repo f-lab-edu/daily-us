@@ -47,7 +47,7 @@ class PostLikeRepositoryTest {
   @Test
   void popDirtyPostIdsReturnsParsedIds() {
     when(redisTemplate.opsForSet()).thenReturn(setOperations);
-    when(setOperations.pop("post:like:dirty")).thenReturn("10", "11", null);
+    when(setOperations.pop("post:like:dirty", 5)).thenReturn(List.of("10", "11"));
 
     List<Long> postIds = postLikeRepository.popDirtyPostIds(5);
 
