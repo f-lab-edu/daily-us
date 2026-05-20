@@ -8,6 +8,8 @@ import com.jaeychoi.dailyus.post.repository.PostLikeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -27,9 +29,9 @@ public class PostLikeService {
       throw new BaseException(ErrorCode.POST_LIKE_ALREADY_EXISTS);
     }
 
-    long delta = postLikeRepository.incrementDelta(postId);
+    scheduleAfterCommit(() -> postLikeRepository.incrementDelta(postId));
 
-    return new PostLikeResponse(postId, true, getLikeCount(postId, delta));
+    return new PostLikeResponse(postId, true, getLikeCount(postId, 1L));
   }
 
   @Transactional
@@ -41,9 +43,9 @@ public class PostLikeService {
       throw new BaseException(ErrorCode.POST_LIKE_NOT_FOUND);
     }
 
-    long delta = postLikeRepository.decrementDelta(postId);
+    scheduleAfterCommit(() -> postLikeRepository.decrementDelta(postId));
 
-    return new PostLikeResponse(postId, false, getLikeCount(postId, delta));
+    return new PostLikeResponse(postId, false, getLikeCount(postId, -1L));
   }
 
   private void validatePostExists(Long postId) {
@@ -53,6 +55,20 @@ public class PostLikeService {
   }
 
   private Long getLikeCount(Long postId, long delta) {
-    return postMapper.findLikeCountByPostId(postId) + delta;
+    return Math.max(postMapper.findLikeCountByPostId(postId) + delta, 0L);
+  }
+
+  private void scheduleAfterCommit(Runnable action) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      action.run();
+      return;
+    }
+
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+      @Override
+      public void afterCommit() {
+        action.run();
+      }
+    });
   }
 }
