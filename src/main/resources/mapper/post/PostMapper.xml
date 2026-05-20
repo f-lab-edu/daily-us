@@ -214,7 +214,7 @@
 
     <update id="applyLikeCountDelta">
         UPDATE posts
-        SET like_count = like_count + #{delta}
+        SET like_count = GREATEST(like_count + #{delta}, 0)
         WHERE post_id = #{postId}
           AND deleted_at IS NULL
     </update>
