@@ -11,6 +11,7 @@ public record CommentRow(
     Long likeCount,
     Boolean likedByMe,
     LocalDateTime createdAt,
+    Boolean edited,
     Long parentId
 ) {
 }

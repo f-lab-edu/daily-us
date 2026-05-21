@@ -197,6 +197,7 @@ class PostControllerTest {
             5L,
             true,
             LocalDateTime.of(2026, 4, 6, 10, 0),
+            false,
             null,
             List.of(new CommentResponseItem(
                 201L,
@@ -207,6 +208,7 @@ class PostControllerTest {
                 1L,
                 false,
                 LocalDateTime.of(2026, 4, 6, 10, 30),
+                true,
                 101L,
                 List.of()
             ))
