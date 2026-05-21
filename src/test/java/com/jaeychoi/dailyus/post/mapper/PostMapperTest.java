@@ -59,6 +59,31 @@ class PostMapperTest {
   }
 
   @Test
+  void updateContentUpdatesActivePostContent() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long postId = insertPost(userId, "before update");
+
+    postMapper.updateContent(postId, "after update");
+
+    assertThat(findPostContent(postId)).isEqualTo("after update");
+  }
+
+  @Test
+  void deleteImagesByPostIdExcludesDeletedImagesFromLookup() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long postId = insertPost(userId, "post with images");
+    postMapper.insertImages(postId, List.of(
+        "https://cdn.example.com/1.png",
+        "https://cdn.example.com/2.png"
+    ));
+
+    postMapper.deleteImagesByPostId(postId);
+
+    assertThat(postMapper.findImagesByPostIds(List.of(postId))).isEmpty();
+    assertThat(countActivePostImages(postId)).isZero();
+  }
+
+  @Test
   void countActiveByUserIdCountsOnlyNonDeletedPosts() throws Exception {
     Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
     Long otherUserId = insertUser(uniqueEmail("other"), uniqueNickname("other"));
@@ -597,6 +622,19 @@ class PostMapperTest {
     }
   }
 
+  private String findPostContent(Long postId) throws Exception {
+    Connection connection = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = connection.prepareStatement(
+        "SELECT content FROM posts WHERE post_id = ?"
+    )) {
+      statement.setLong(1, postId);
+      try (ResultSet resultSet = statement.executeQuery()) {
+        resultSet.next();
+        return resultSet.getString(1);
+      }
+    }
+  }
+
   private List<String> loadPostImageUrls(Long postId) throws Exception {
     Connection connection = DataSourceUtils.getConnection(dataSource);
     try (PreparedStatement statement = connection.prepareStatement(
@@ -609,6 +647,19 @@ class PostMapperTest {
           imageUrls.add(resultSet.getString(1));
         }
         return imageUrls;
+      }
+    }
+  }
+
+  private int countActivePostImages(Long postId) throws Exception {
+    Connection connection = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = connection.prepareStatement(
+        "SELECT COUNT(*) FROM post_images WHERE post_id = ? AND deleted_at IS NULL"
+    )) {
+      statement.setLong(1, postId);
+      try (ResultSet resultSet = statement.executeQuery()) {
+        resultSet.next();
+        return resultSet.getInt(1);
       }
     }
   }

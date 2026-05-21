@@ -14,6 +14,10 @@ public interface PostMapper {
 
   void insertImages(Long postId, List<String> imageUrls);
 
+  void updateContent(Long postId, String content);
+
+  void deleteImagesByPostId(Long postId);
+
   boolean existsActiveById(Long postId);
 
   void insertLike(Long postId, Long userId);
