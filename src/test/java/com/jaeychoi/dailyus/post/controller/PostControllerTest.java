@@ -19,10 +19,12 @@ import com.jaeychoi.dailyus.common.web.AuthRequestAttributes;
 import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
 import com.jaeychoi.dailyus.post.dto.PostCreateRequest;
 import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
+import com.jaeychoi.dailyus.post.dto.PostDetailResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedItemResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
 import com.jaeychoi.dailyus.post.service.PostCreateService;
+import com.jaeychoi.dailyus.post.service.PostDetailService;
 import com.jaeychoi.dailyus.post.service.PostFeedService;
 import com.jaeychoi.dailyus.post.service.PostLikeService;
 import java.time.LocalDateTime;
@@ -49,6 +51,9 @@ class PostControllerTest {
   private PostFeedService postFeedService;
 
   @Mock
+  private PostDetailService postDetailService;
+
+  @Mock
   private PostLikeService postLikeService;
 
   @Mock
@@ -63,7 +68,12 @@ class PostControllerTest {
     validator.afterPropertiesSet();
 
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new PostController(postCreateService, postFeedService, commentGetService, postLikeService))
+            new PostController(
+                postCreateService,
+                postFeedService,
+                postDetailService,
+                commentGetService,
+                postLikeService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
@@ -179,6 +189,42 @@ class PostControllerTest {
   @Test
   void getFeedReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
     mockMvc.perform(get("/api/v1/posts"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void getDetailReturnsOkResponse() throws Exception {
+    when(postDetailService.getDetail(1L, 10L)).thenReturn(new PostDetailResponse(
+        10L,
+        2L,
+        "author",
+        "https://example.com/profile.png",
+        "detail content",
+        List.of("https://cdn.example.com/1.png", "https://cdn.example.com/2.png"),
+        3L,
+        true,
+        LocalDateTime.of(2026, 5, 17, 9, 0)
+    ));
+
+    mockMvc.perform(get("/api/v1/posts/10")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.postId").value(10L))
+        .andExpect(jsonPath("$.data.userId").value(2L))
+        .andExpect(jsonPath("$.data.nickname").value("author"))
+        .andExpect(jsonPath("$.data.imageUrls[0]").value("https://cdn.example.com/1.png"))
+        .andExpect(jsonPath("$.data.likeCount").value(3L))
+        .andExpect(jsonPath("$.data.likedByMe").value(true));
+  }
+
+  @Test
+  void getDetailReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(get("/api/v1/posts/10"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
