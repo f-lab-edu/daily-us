@@ -23,6 +23,7 @@ import com.jaeychoi.dailyus.post.dto.PostFeedItemResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
 import com.jaeychoi.dailyus.post.service.PostCreateService;
+import com.jaeychoi.dailyus.post.service.PostDeleteService;
 import com.jaeychoi.dailyus.post.service.PostFeedService;
 import com.jaeychoi.dailyus.post.service.PostLikeService;
 import java.time.LocalDateTime;
@@ -52,6 +53,9 @@ class PostControllerTest {
   private PostLikeService postLikeService;
 
   @Mock
+  private PostDeleteService postDeleteService;
+
+  @Mock
   private CommentGetService commentGetService;
 
   private MockMvc mockMvc;
@@ -63,7 +67,12 @@ class PostControllerTest {
     validator.afterPropertiesSet();
 
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new PostController(postCreateService, postFeedService, commentGetService, postLikeService))
+            new PostController(
+                postCreateService,
+                postDeleteService,
+                postFeedService,
+                commentGetService,
+                postLikeService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
@@ -299,8 +308,27 @@ class PostControllerTest {
   }
 
   @Test
+  void deletePostReturnsOkResponse() throws Exception {
+    mockMvc.perform(delete("/api/v1/posts/10")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
   void likePostReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
     mockMvc.perform(post("/api/v1/posts/10/like"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void deletePostReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(delete("/api/v1/posts/10"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))

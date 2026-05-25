@@ -100,4 +100,11 @@ class PostFeedCacheServiceTest {
 
     verify(postFeedRepository).addPostIdToFeeds(List.of(3L, 9L), 15L, createdAt, 100L);
   }
+
+  @Test
+  void removePostFromFeedsDelegatesToRepository() {
+    postFeedCacheService.removePostFromFeeds(List.of(3L, 9L), 15L);
+
+    verify(postFeedRepository).removePostIdFromFeeds(List.of(3L, 9L), 15L);
+  }
 }

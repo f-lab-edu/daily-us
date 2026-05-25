@@ -65,4 +65,14 @@ class PostLikeRepositoryTest {
 
     assertThat(delta).isEqualTo(3L);
   }
+
+  @Test
+  void clearRemovesDeltaKeyAndDirtyPostId() {
+    when(redisTemplate.opsForSet()).thenReturn(setOperations);
+
+    postLikeRepository.clear(10L);
+
+    verify(redisTemplate).delete("post:like:delta:10");
+    verify(setOperations).remove("post:like:dirty", "10");
+  }
 }
