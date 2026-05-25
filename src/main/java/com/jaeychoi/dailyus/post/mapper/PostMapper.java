@@ -26,6 +26,18 @@ public interface PostMapper {
 
   Post findById(Long postId);
 
+  int delete(Long postId, Long userId);
+
+  int deleteImagesByPostId(Long postId);
+
+  int deleteCommentsByPostId(Long postId);
+
+  int deleteCommentLikesByPostId(Long postId);
+
+  int deletePostLikesByPostId(Long postId);
+
+  int deleteHashtagsByPostId(Long postId);
+
   boolean existsFeedPosts(Long userId);
 
   long countActiveByUserId(Long userId);
