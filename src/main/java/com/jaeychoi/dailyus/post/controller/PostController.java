@@ -11,6 +11,7 @@ import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
 import com.jaeychoi.dailyus.post.service.PostCreateService;
+import com.jaeychoi.dailyus.post.service.PostDeleteService;
 import com.jaeychoi.dailyus.post.service.PostFeedService;
 import com.jaeychoi.dailyus.post.service.PostLikeService;
 import jakarta.validation.Valid;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PostController {
 
   private final PostCreateService postCreateService;
+  private final PostDeleteService postDeleteService;
   private final PostFeedService postFeedService;
   private final CommentGetService commentGetService;
   private final PostLikeService postLikeService;
@@ -71,6 +73,13 @@ public class PostController {
   public ApiResponse<PostCreateResponse> createPost(@AuthenticatedUser CurrentUser user,
       @Valid @RequestBody PostCreateRequest request) {
     return ApiResponse.success(postCreateService.createPost(user.userId(), request));
+  }
+
+  @DeleteMapping("/{postId}")
+  @AuthRequired
+  public ApiResponse<Void> deletePost(@AuthenticatedUser CurrentUser user, @PathVariable Long postId) {
+    postDeleteService.deletePost(user.userId(), postId);
+    return ApiResponse.success(null);
   }
 
   @PostMapping("/{postId}/like")
