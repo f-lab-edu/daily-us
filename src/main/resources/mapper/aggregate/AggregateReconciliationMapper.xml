@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jaeychoi.dailyus.aggregate.mapper.AggregateReconciliationMapper">
+
+    <select id="findPostIdsWithLikeCountMismatch" resultType="long">
+        SELECT p.post_id
+        FROM posts p
+        WHERE p.deleted_at IS NULL
+          AND p.like_count &lt;&gt; (
+              SELECT COUNT(*)
+              FROM post_likes pl
+              WHERE pl.post_id = p.post_id
+          )
+        ORDER BY p.post_id
+        LIMIT #{limit}
+    </select>
+
+    <update id="reconcilePostLikeCount">
+        UPDATE posts
+        SET like_count = (
+            SELECT COUNT(*)
+            FROM post_likes pl
+            WHERE pl.post_id = #{postId}
+        )
+        WHERE post_id = #{postId}
+          AND deleted_at IS NULL
+    </update>
+
+    <select id="findCommentIdsWithLikeCountMismatch" resultType="long">
+        SELECT c.comment_id
+        FROM comments c
+        WHERE c.deleted_at IS NULL
+          AND c.like_count &lt;&gt; (
+              SELECT COUNT(*)
+              FROM comment_likes cl
+              WHERE cl.comment_id = c.comment_id
+          )
+        ORDER BY c.comment_id
+        LIMIT #{limit}
+    </select>
+
+    <update id="reconcileCommentLikeCount">
+        UPDATE comments
+        SET like_count = (
+            SELECT COUNT(*)
+            FROM comment_likes cl
+            WHERE cl.comment_id = #{commentId}
+        )
+        WHERE comment_id = #{commentId}
+          AND deleted_at IS NULL
+    </update>
+
+    <select id="findUserIdsWithFollowerCountMismatch" resultType="long">
+        SELECT u.user_id
+        FROM users u
+        WHERE u.deleted_at IS NULL
+          AND u.follower_count &lt;&gt; (
+              SELECT COUNT(*)
+              FROM user_follow uf
+              JOIN users follower ON follower.user_id = uf.follower
+              WHERE uf.followee = u.user_id
+                AND follower.deleted_at IS NULL
+          )
+        ORDER BY u.user_id
+        LIMIT #{limit}
+    </select>
+
+    <update id="reconcileFollowerCount">
+        UPDATE users
+        SET follower_count = (
+            SELECT COUNT(*)
+            FROM user_follow uf
+            JOIN users follower ON follower.user_id = uf.follower
+            WHERE uf.followee = #{userId}
+              AND follower.deleted_at IS NULL
+        )
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+    </update>
+
+    <select id="findUserIdsWithFolloweeCountMismatch" resultType="long">
+        SELECT u.user_id
+        FROM users u
+        WHERE u.deleted_at IS NULL
+          AND u.followee_count &lt;&gt; (
+              SELECT COUNT(*)
+              FROM user_follow uf
+              JOIN users followee ON followee.user_id = uf.followee
+              WHERE uf.follower = u.user_id
+                AND followee.deleted_at IS NULL
+          )
+        ORDER BY u.user_id
+        LIMIT #{limit}
+    </select>
+
+    <update id="reconcileFolloweeCount">
+        UPDATE users
+        SET followee_count = (
+            SELECT COUNT(*)
+            FROM user_follow uf
+            JOIN users followee ON followee.user_id = uf.followee
+            WHERE uf.follower = #{userId}
+              AND followee.deleted_at IS NULL
+        )
+        WHERE user_id = #{userId}
+          AND deleted_at IS NULL
+    </update>
+
+    <select id="findGroupIdsWithMemberCountMismatch" resultType="long">
+        SELECT g.group_id
+        FROM user_groups g
+        WHERE g.deleted_at IS NULL
+          AND g.member_count &lt;&gt; (
+              SELECT COUNT(*)
+              FROM group_members gm
+              JOIN users u ON u.user_id = gm.user_id
+              WHERE gm.group_id = g.group_id
+                AND u.deleted_at IS NULL
+          )
+        ORDER BY g.group_id
+        LIMIT #{limit}
+    </select>
+
+    <update id="reconcileMemberCount">
+        UPDATE user_groups
+        SET member_count = (
+            SELECT COUNT(*)
+            FROM group_members gm
+            JOIN users u ON u.user_id = gm.user_id
+            WHERE gm.group_id = #{groupId}
+              AND u.deleted_at IS NULL
+        )
+        WHERE group_id = #{groupId}
+          AND deleted_at IS NULL
+    </update>
+
+</mapper>
