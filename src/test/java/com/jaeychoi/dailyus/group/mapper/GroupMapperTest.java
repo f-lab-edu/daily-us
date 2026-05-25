@@ -163,6 +163,46 @@ class GroupMapperTest {
   }
 
   @Test
+  void deleteMemberRemovesGroupMembership() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Long memberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    groupMapper.insert(group);
+    groupMapper.insertMember(group.getGroupId(), memberId);
+
+    groupMapper.deleteMember(group.getGroupId(), memberId);
+
+    assertThat(countGroupMember(group.getGroupId(), memberId)).isEqualTo(0);
+  }
+
+  @Test
+  void decreaseMemberCountUpdatesGroupMemberCount() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .memberCount(2)
+        .build();
+    groupMapper.insert(group);
+    jdbcTemplate.update(
+        "UPDATE user_groups SET member_count = ? WHERE group_id = ?",
+        2,
+        group.getGroupId()
+    );
+
+    groupMapper.decreaseMemberCount(group.getGroupId());
+
+    assertThat(findMemberCount(group.getGroupId())).isEqualTo(1);
+  }
+
+  @Test
   void findGroupListReturnsActiveGroupsByDescendingCursor() {
     Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
     Group firstGroup = insertGroup(ownerId, "group-1", "https://example.com/1.png");
