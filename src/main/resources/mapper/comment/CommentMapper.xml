@@ -27,6 +27,15 @@
         )
     </select>
 
+    <select id="findActiveById" resultType="com.jaeychoi.dailyus.comment.domain.Comment">
+        SELECT c.comment_id AS commentId,
+               c.user_id AS userId,
+               c.parent_id AS parentId
+        FROM comments c
+        WHERE c.comment_id = #{param1}
+          AND c.deleted_at IS NULL
+    </select>
+
     <select id="findComments" resultMap="commentRowResultMap">
         SELECT c.comment_id,
                u.user_id,
@@ -96,5 +105,31 @@
         WHERE ranked.reply_order &lt;= #{limit}
         ORDER BY ranked.parent_id, ranked.created_at DESC, ranked.comment_id DESC
     </select>
+
+    <delete id="deleteCommentLikes">
+        DELETE FROM comment_likes
+        WHERE comment_id = #{param1}
+        <if test="param2">
+            OR comment_id IN (
+                SELECT c.comment_id
+                FROM comments c
+                WHERE c.parent_id = #{param1}
+                  AND c.deleted_at IS NULL
+            )
+        </if>
+    </delete>
+
+    <update id="delete">
+        UPDATE comments
+        SET deleted_at = CURRENT_TIMESTAMP,
+            like_count = 0
+        WHERE deleted_at IS NULL
+          AND (
+            comment_id = #{param1}
+            <if test="param2">
+                OR parent_id = #{param1}
+            </if>
+          )
+    </update>
 
 </mapper>
