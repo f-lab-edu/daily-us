@@ -24,4 +24,12 @@ public interface CommentMapper {
       @Param("userId") Long userId,
       @Param("limit") Long limit
   );
+
+  List<CommentRow> findReplies(
+      @Param("parentCommentId") Long parentCommentId,
+      @Param("userId") Long userId,
+      @Param("size") Long size,
+      @Param("createdAt") LocalDateTime createdAt,
+      @Param("replyId") Long replyId
+  );
 }

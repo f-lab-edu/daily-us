@@ -97,4 +97,31 @@
         ORDER BY ranked.parent_id, ranked.created_at DESC, ranked.comment_id DESC
     </select>
 
+    <select id="findReplies" resultMap="commentRowResultMap">
+        SELECT c.comment_id,
+               u.user_id,
+               u.nickname,
+               u.profile_image,
+               c.content,
+               c.like_count,
+               EXISTS(
+                   SELECT 1
+                   FROM comment_likes cl
+                   WHERE cl.comment_id = c.comment_id
+                     AND cl.user_id = #{userId}
+               ) AS liked_by_me,
+               c.created_at,
+               c.parent_id
+        FROM comments c
+        JOIN users u ON u.user_id = c.user_id
+        WHERE c.parent_id = #{parentCommentId}
+          AND c.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+        <if test="createdAt != null and replyId != null">
+            AND (c.created_at, c.comment_id) &lt; (#{createdAt}, #{replyId})
+        </if>
+        ORDER BY c.created_at DESC, c.comment_id DESC
+        LIMIT #{size}
+    </select>
+
 </mapper>
