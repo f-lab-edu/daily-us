@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,30 +25,37 @@ public class CommentGetService {
 
   private final CommentMapper commentMapper;
 
-  public CommentResponse getComments(
-      Long postId,
-      Long userId,
-      LocalDateTime createdAt,
-      Long commentId,
-      Long size
-  ) {
+  public CommentResponse getComments(Long postId, Long userId, LocalDateTime createdAt,
+      Long commentId, Long size) {
     validateCursor(createdAt, commentId);
     validatePostExists(postId);
 
     long pageSize = resolvePageSize(size);
-    List<CommentRow> rows = commentMapper.findComments(postId, userId, pageSize + 1, createdAt, commentId);
-    boolean hasNext = rows.size() > pageSize;
-    List<CommentRow> pageRows = hasNext ? rows.subList(0, (int) pageSize) : rows;
-    Map<Long, List<CommentResponseItem>> repliesByParentId = loadRepliesByParentId(pageRows, userId);
-    CommentRow lastRow = hasNext ? pageRows.get(pageRows.size() - 1) : null;
-
-    return new CommentResponse(
-        toItems(pageRows, repliesByParentId),
-        lastRow == null ? null : lastRow.createdAt(),
-        lastRow == null ? null : lastRow.commentId(),
-        hasNext,
-        pageSize
+    List<CommentRow> rows =
+        commentMapper.findComments(postId, userId, pageSize + 1, createdAt, commentId);
+    List<CommentRow> pageRows = getPageRows(rows, pageSize);
+    Map<Long, List<CommentResponseItem>> repliesByParentId = loadRepliesByParentId(pageRows,
+        userId);
+    return toCommentResponse(
+        rows,
+        pageSize,
+        currentPageRows -> toItems(currentPageRows, repliesByParentId)
     );
+  }
+
+  public CommentResponse getReplies(Long parentCommentId, Long userId, LocalDateTime createdAt,
+      Long replyId, Long size) {
+    validateCursor(createdAt, replyId);
+    long pageSize = resolveReplyPageSize(size);
+
+    List<CommentRow> rows = commentMapper.findReplies(
+        parentCommentId,
+        userId,
+        pageSize + 1,
+        createdAt,
+        replyId
+    );
+    return toCommentResponse(rows, pageSize, this::toReplies);
   }
 
   private void validatePostExists(Long postId) {
@@ -69,6 +77,35 @@ public class CommentGetService {
     return size;
   }
 
+  private long resolveReplyPageSize(Long size) {
+    if (size == null || size <= 0) {
+      return DEFAULT_REPLY_SIZE;
+    }
+    return size;
+  }
+
+  private CommentResponse toCommentResponse(
+      List<CommentRow> rows,
+      long pageSize,
+      Function<List<CommentRow>, List<CommentResponseItem>> itemMapper
+  ) {
+    boolean hasNext = rows.size() > pageSize;
+    List<CommentRow> pageRows = getPageRows(rows, pageSize);
+    CommentRow lastRow = hasNext ? pageRows.get(pageRows.size() - 1) : null;
+
+    return new CommentResponse(
+        itemMapper.apply(pageRows),
+        lastRow == null ? null : lastRow.createdAt(),
+        lastRow == null ? null : lastRow.commentId(),
+        hasNext,
+        pageSize
+    );
+  }
+
+  private List<CommentRow> getPageRows(List<CommentRow> rows, long pageSize) {
+    return rows.size() > pageSize ? rows.subList(0, (int) pageSize) : rows;
+  }
+
   private List<CommentResponseItem> toItems(
       List<CommentRow> rows,
       Map<Long, List<CommentResponseItem>> repliesByParentId
@@ -86,6 +123,12 @@ public class CommentGetService {
             row.parentId(),
             repliesByParentId.getOrDefault(row.commentId(), Collections.emptyList())
         ))
+        .toList();
+  }
+
+  private List<CommentResponseItem> toReplies(List<CommentRow> rows) {
+    return rows.stream()
+        .map(this::toReply)
         .toList();
   }
 
