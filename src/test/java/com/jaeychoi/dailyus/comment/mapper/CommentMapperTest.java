@@ -89,6 +89,39 @@ class CommentMapperTest {
         .containsExactly(false, false, true, false);
   }
 
+  @Test
+  void findRepliesReturnsRepliesByCursorOrder() throws Exception {
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long replierId = insertUser(uniqueEmail("replier"), uniqueNickname("replier"));
+    Long postId = insertPost(authorId, "post");
+    Long parentId = insertComment(authorId, postId, null, "parent");
+    Long firstReplyId = insertComment(replierId, postId, parentId, "reply-1");
+    Long secondReplyId = insertComment(loginUserId, postId, parentId, "reply-2");
+    Long thirdReplyId = insertComment(replierId, postId, parentId, "reply-3");
+    Long fourthReplyId = insertComment(authorId, postId, parentId, "reply-4");
+    updateCommentCreatedAt(firstReplyId, LocalDateTime.of(2026, 4, 6, 8, 0));
+    updateCommentCreatedAt(secondReplyId, LocalDateTime.of(2026, 4, 6, 9, 0));
+    updateCommentCreatedAt(thirdReplyId, LocalDateTime.of(2026, 4, 6, 10, 0));
+    updateCommentCreatedAt(fourthReplyId, LocalDateTime.of(2026, 4, 6, 11, 0));
+    insertCommentLike(secondReplyId, loginUserId);
+
+    List<CommentRow> rows = commentMapper.findReplies(
+        parentId,
+        loginUserId,
+        2L,
+        LocalDateTime.of(2026, 4, 6, 11, 0),
+        fourthReplyId
+    );
+
+    assertThat(rows).extracting(CommentRow::commentId)
+        .containsExactly(thirdReplyId, secondReplyId);
+    assertThat(rows).extracting(CommentRow::parentId)
+        .containsExactly(parentId, parentId);
+    assertThat(rows).extracting(CommentRow::likedByMe)
+        .containsExactly(false, true);
+  }
+
   private Long insertUser(String email, String nickname) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
