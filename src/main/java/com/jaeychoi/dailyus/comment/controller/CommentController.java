@@ -1,0 +1,40 @@
+package com.jaeychoi.dailyus.comment.controller;
+
+import com.jaeychoi.dailyus.auth.annotation.AuthRequired;
+import com.jaeychoi.dailyus.auth.annotation.AuthenticatedUser;
+import com.jaeychoi.dailyus.auth.domain.CurrentUser;
+import com.jaeychoi.dailyus.comment.dto.CommentResponse;
+import com.jaeychoi.dailyus.comment.service.CommentGetService;
+import com.jaeychoi.dailyus.common.web.ApiResponse;
+import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/comments")
+@RequiredArgsConstructor
+public class CommentController {
+
+  private final CommentGetService commentGetService;
+
+  @GetMapping("/{commentId}/replies")
+  @AuthRequired
+  public ApiResponse<CommentResponse> getReplies(
+      @PathVariable Long commentId,
+      @AuthenticatedUser CurrentUser user,
+      @RequestParam(required = false)
+      @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+      LocalDateTime createdAt,
+      @RequestParam(required = false) Long replyId,
+      @RequestParam(required = false, defaultValue = "3") Long size
+  ) {
+    return ApiResponse.success(
+        commentGetService.getReplies(commentId, user.userId(), createdAt, replyId, size)
+    );
+  }
+}
