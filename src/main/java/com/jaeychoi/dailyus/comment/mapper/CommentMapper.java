@@ -29,4 +29,11 @@ public interface CommentMapper {
       @Param("userId") Long userId,
       @Param("limit") Long limit
   );
+
+  Comment findActiveCommentById(@Param("commentId") Long commentId);
+
+  int updateContent(
+      @Param("commentId") Long commentId,
+      @Param("content") String content
+  );
 }
