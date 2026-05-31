@@ -14,14 +14,18 @@ import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
 import com.jaeychoi.dailyus.post.dto.PostDetailResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
+import com.jaeychoi.dailyus.post.dto.PostUpdateRequest;
+import com.jaeychoi.dailyus.post.dto.PostUpdateResponse;
 import com.jaeychoi.dailyus.post.service.PostCreateService;
 import com.jaeychoi.dailyus.post.service.PostDeleteService;
 import com.jaeychoi.dailyus.post.service.PostDetailService;
 import com.jaeychoi.dailyus.post.service.PostFeedService;
 import com.jaeychoi.dailyus.post.service.PostLikeService;
+import com.jaeychoi.dailyus.post.service.PostUpdateService;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -46,6 +50,7 @@ public class PostController {
   private final CommentCreateService commentCreateService;
   private final CommentGetService commentGetService;
   private final PostLikeService postLikeService;
+  private final PostUpdateService postUpdateService;
 
   @GetMapping
   @AuthRequired
@@ -107,6 +112,16 @@ public class PostController {
   public ApiResponse<Void> deletePost(@AuthenticatedUser CurrentUser user, @PathVariable Long postId) {
     postDeleteService.deletePost(user.userId(), postId);
     return ApiResponse.success(null);
+  }
+
+  @PatchMapping("/{postId}")
+  @AuthRequired
+  public ApiResponse<PostUpdateResponse> updatePost(
+      @AuthenticatedUser CurrentUser user,
+      @PathVariable Long postId,
+      @Valid @RequestBody PostUpdateRequest request
+  ) {
+    return ApiResponse.success(postUpdateService.updatePost(user.userId(), postId, request));
   }
 
   @PostMapping("/{postId}/like")

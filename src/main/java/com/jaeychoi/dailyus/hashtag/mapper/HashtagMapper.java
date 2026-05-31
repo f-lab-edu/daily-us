@@ -13,4 +13,6 @@ public interface HashtagMapper {
   void insert(Hashtag hashtag);
 
   void insertPostHashtags(@Param("postId") Long postId, @Param("hashtagIds") List<Long> hashtagIds);
+
+  void deletePostHashtags(Long postId);
 }

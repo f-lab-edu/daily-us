@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,11 +27,14 @@ import com.jaeychoi.dailyus.post.dto.PostDetailResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedItemResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
+import com.jaeychoi.dailyus.post.dto.PostUpdateRequest;
+import com.jaeychoi.dailyus.post.dto.PostUpdateResponse;
 import com.jaeychoi.dailyus.post.service.PostCreateService;
 import com.jaeychoi.dailyus.post.service.PostDeleteService;
 import com.jaeychoi.dailyus.post.service.PostDetailService;
 import com.jaeychoi.dailyus.post.service.PostFeedService;
 import com.jaeychoi.dailyus.post.service.PostLikeService;
+import com.jaeychoi.dailyus.post.service.PostUpdateService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,6 +71,9 @@ class PostControllerTest {
   private CommentCreateService commentCreateService;
 
   @Mock
+  private PostUpdateService postUpdateService;
+
+  @Mock
   private CommentGetService commentGetService;
 
   private MockMvc mockMvc;
@@ -85,7 +92,8 @@ class PostControllerTest {
                 postDetailService,
                 commentCreateService,
                 commentGetService,
-                postLikeService))
+                postLikeService,
+                postUpdateService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
@@ -134,6 +142,65 @@ class PostControllerTest {
             .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+  }
+
+  @Test
+  void updatePostReturnsOkResponse() throws Exception {
+    PostUpdateRequest request = new PostUpdateRequest(
+        List.of("https://cdn.example.com/1.png"),
+        "updated content #Morning"
+    );
+    PostUpdateResponse response = new PostUpdateResponse(
+        10L,
+        1L,
+        request.content(),
+        request.imageUrls(),
+        List.of("morning"),
+        3L
+    );
+    when(postUpdateService.updatePost(anyLong(), anyLong(), any(PostUpdateRequest.class)))
+        .thenReturn(response);
+
+    mockMvc.perform(patch("/api/v1/posts/10")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.postId").value(10L))
+        .andExpect(jsonPath("$.data.userId").value(1L))
+        .andExpect(jsonPath("$.data.hashtags[0]").value("morning"))
+        .andExpect(jsonPath("$.data.likeCount").value(3L));
+  }
+
+  @Test
+  void updatePostReturnsBadRequestWhenImagesAreEmpty() throws Exception {
+    PostUpdateRequest request = new PostUpdateRequest(List.of(), "updated content");
+
+    mockMvc.perform(patch("/api/v1/posts/10")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+  }
+
+  @Test
+  void updatePostReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    PostUpdateRequest request = new PostUpdateRequest(
+        List.of("https://cdn.example.com/1.png"),
+        "updated content"
+    );
+
+    mockMvc.perform(patch("/api/v1/posts/10")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
   }
 
   @Test
