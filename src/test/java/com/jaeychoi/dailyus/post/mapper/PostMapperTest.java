@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.post.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jaeychoi.dailyus.post.domain.Post;
+import com.jaeychoi.dailyus.post.dto.PostDetailRow;
 import com.jaeychoi.dailyus.post.dto.PostFeedRow;
 import com.jaeychoi.dailyus.post.dto.PostImageRow;
 import java.sql.Connection;
@@ -90,7 +91,7 @@ class PostMapperTest {
     Long activePostId = insertPost(userId, "active post");
     Long deletedPostId = insertPost(userId, "deleted post");
     insertPost(otherUserId, "other user post");
-    softDeletePost(deletedPostId);
+    deletePost(deletedPostId);
 
     long count = postMapper.countActiveByUserId(userId);
 
@@ -103,20 +104,103 @@ class PostMapperTest {
     Long postId = insertPost(userId, "liked post");
 
     assertThat(postMapper.existsActiveById(postId)).isTrue();
-    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isZero();
 
     postMapper.insertLike(postId, userId);
-    postMapper.incrementLikeCount(postId);
+    postMapper.applyLikeCountDelta(postId, 1L);
 
-    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isEqualTo(1);
     assertThat(countPostLikes(postId, userId)).isEqualTo(1);
     assertThat(findPostLikeCount(postId)).isEqualTo(1L);
 
     assertThat(postMapper.deleteLike(postId, userId)).isEqualTo(1);
-    postMapper.decrementLikeCount(postId);
+    postMapper.applyLikeCountDelta(postId, -1L);
 
-    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isZero();
+    assertThat(countPostLikes(postId, userId)).isZero();
     assertThat(findPostLikeCount(postId)).isZero();
+  }
+
+  @Test
+  void applyLikeCountDeltaDoesNotDropBelowZero() throws Exception {
+    Long userId = insertUser("post-like-floor-user@example.com", "post-like-floor-user");
+    Long postId = insertPost(userId, "post with zero likes");
+
+    postMapper.applyLikeCountDelta(postId, -1L);
+
+    assertThat(findPostLikeCount(postId)).isZero();
+  }
+
+  @Test
+  void deleteMarksPostImagesAndCommentsDeletedAndRemovesLikesAndHashtags() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long otherUserId = insertUser(uniqueEmail("other"), uniqueNickname("other"));
+    Long postId = insertPost(authorId, "delete target");
+    postMapper.insertImages(postId, List.of("https://cdn.example.com/delete-1.png"));
+    Long commentId = insertComment(otherUserId, postId, "comment");
+    insertPostLike(postId, otherUserId);
+    insertCommentLike(commentId, authorId);
+    Long hashtagId = insertHashtag("delete-tag");
+    insertHashtagPost(hashtagId, postId);
+
+    assertThat(postMapper.deleteCommentLikesByPostId(postId)).isEqualTo(1);
+    assertThat(postMapper.deletePostLikesByPostId(postId)).isEqualTo(1);
+    assertThat(postMapper.deleteHashtagsByPostId(postId)).isEqualTo(1);
+    assertThat(postMapper.deleteCommentsByPostId(postId)).isEqualTo(1);
+    assertThat(postMapper.deleteImagesByPostId(postId)).isEqualTo(1);
+    assertThat(postMapper.delete(postId, authorId)).isEqualTo(1);
+
+    assertThat(postMapper.findById(postId)).isNull();
+    assertThat(countActiveComments(postId)).isZero();
+    assertThat(countActivePostImages(postId)).isZero();
+    assertThat(countPostLikes(postId, otherUserId)).isZero();
+    assertThat(countCommentLikes(commentId)).isZero();
+    assertThat(countHashtagPosts(postId)).isZero();
+  }
+
+  @Test
+  void deleteReturnsZeroWhenAuthorDoesNotMatch() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long otherUserId = insertUser(uniqueEmail("other"), uniqueNickname("other"));
+    Long postId = insertPost(authorId, "delete target");
+
+    int updated = postMapper.delete(postId, otherUserId);
+
+    assertThat(updated).isZero();
+    assertThat(postMapper.findById(postId)).isNotNull();
+  }
+
+  void findDetailByIdReturnsActivePostDetailWithLikedByMe() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long postId = insertPost(authorId, "detail content");
+    updatePostCreatedAt(postId, LocalDateTime.of(2026, 5, 17, 9, 0));
+    postMapper.insertImages(postId, List.of(
+        "https://cdn.example.com/1.png",
+        "https://cdn.example.com/2.png"
+    ));
+    postMapper.insertLike(postId, loginUserId);
+    postMapper.applyLikeCountDelta(postId, 1L);
+
+    PostDetailRow row = postMapper.findDetailById(postId, loginUserId);
+
+    assertThat(row).isNotNull();
+    assertThat(row.postId()).isEqualTo(postId);
+    assertThat(row.userId()).isEqualTo(authorId);
+    assertThat(row.nickname()).startsWith("author-");
+    assertThat(row.content()).isEqualTo("detail content");
+    assertThat(row.likeCount()).isEqualTo(1L);
+    assertThat(row.likedByMe()).isTrue();
+    assertThat(row.createdAt()).isEqualTo(LocalDateTime.of(2026, 5, 17, 9, 0));
+  }
+
+  @Test
+  void findDetailByIdReturnsNullWhenPostIsDeleted() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long postId = insertPost(authorId, "deleted detail");
+    deletePost(postId);
+
+    PostDetailRow row = postMapper.findDetailById(postId, loginUserId);
+
+    assertThat(row).isNull();
   }
 
   @Test
@@ -238,8 +322,8 @@ class PostMapperTest {
     Long activeGroupMemberPostId = insertPost(activeGroupMemberId, "active group member post");
     Long deletedGroupMemberPostId = insertPost(deletedGroupMemberId, "deleted group member post");
 
-    softDeleteUser(deletedFolloweeId);
-    softDeleteGroup(deletedGroupId);
+    deleteUser(deletedFolloweeId);
+    deleteGroup(deletedGroupId);
 
     List<PostFeedRow> rows = postMapper.findFeedPosts(loginUserId, 10L, null, null);
 
@@ -263,8 +347,8 @@ class PostMapperTest {
     insertPost(deletedFolloweeId, "deleted followee post");
     insertPost(deletedGroupMemberId, "deleted group member post");
 
-    softDeleteUser(deletedFolloweeId);
-    softDeleteGroup(deletedGroupId);
+    deleteUser(deletedFolloweeId);
+    deleteGroup(deletedGroupId);
 
     boolean exists = postMapper.existsFeedPosts(loginUserId);
 
@@ -308,7 +392,7 @@ class PostMapperTest {
     updatePostCreatedAt(sameTimeLowerPostId, sameCreatedAt);
     updatePostCreatedAt(sameTimeHigherPostId, sameCreatedAt);
     updatePostCreatedAt(deletedPostId, LocalDateTime.of(2026, 5, 1, 10, 0));
-    softDeletePost(deletedPostId, LocalDateTime.of(2026, 5, 1, 11, 0));
+    deletePost(deletedPostId, LocalDateTime.of(2026, 5, 1, 11, 0));
 
     List<PostFeedRow> rows = postMapper.findPostsByUserId(userId, 10L, null, null);
 
@@ -380,7 +464,7 @@ class PostMapperTest {
     updatePostCreatedAt(deletedPostId, LocalDateTime.of(2026, 3, 11, 7, 0));
     updatePostCreatedAt(aprilPostId, LocalDateTime.of(2026, 4, 1, 10, 0));
     updatePostCreatedAt(otherUserPostId, LocalDateTime.of(2026, 3, 15, 10, 0));
-    softDeletePost(deletedPostId);
+    deletePost(deletedPostId);
 
     List<Integer> activityDays = postMapper.findActivityDaysByUserId(
         userId,
@@ -401,9 +485,10 @@ class PostMapperTest {
                     nickname,
                     follower_count,
                     followee_count,
+                    intro,
                     profile_image,
                     deleted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
             new String[]{"user_id"}
         )) {
@@ -413,7 +498,8 @@ class PostMapperTest {
       statement.setLong(4, 0L);
       statement.setLong(5, 0L);
       statement.setString(6, null);
-      statement.setTimestamp(7, null);
+      statement.setString(7, null);
+      statement.setTimestamp(8, null);
       statement.executeUpdate();
 
       try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
@@ -457,6 +543,94 @@ class PostMapperTest {
         )) {
       statement.setLong(1, followerId);
       statement.setLong(2, followeeId);
+      statement.executeUpdate();
+    }
+  }
+
+  private Long insertComment(Long userId, Long postId, String content) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            """
+                INSERT INTO comments (
+                    content,
+                    user_id,
+                    post_id
+                ) VALUES (?, ?, ?)
+                """,
+            new String[]{"comment_id"}
+        )) {
+      statement.setString(1, content);
+      statement.setLong(2, userId);
+      statement.setLong(3, postId);
+      statement.executeUpdate();
+
+      try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+        assertThat(generatedKeys.next()).isTrue();
+        return generatedKeys.getLong(1);
+      }
+    }
+  }
+
+  private void insertPostLike(Long postId, Long userId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            """
+                INSERT INTO post_likes (
+                    post_id,
+                    user_id
+                ) VALUES (?, ?)
+                """
+        )) {
+      statement.setLong(1, postId);
+      statement.setLong(2, userId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void insertCommentLike(Long commentId, Long userId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            """
+                INSERT INTO comment_likes (
+                    comment_id,
+                    user_id
+                ) VALUES (?, ?)
+                """
+        )) {
+      statement.setLong(1, commentId);
+      statement.setLong(2, userId);
+      statement.executeUpdate();
+    }
+  }
+
+  private Long insertHashtag(String name) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "INSERT INTO hashtag (name) VALUES (?)",
+            new String[]{"hashtag_id"}
+        )) {
+      statement.setString(1, name);
+      statement.executeUpdate();
+
+      try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+        assertThat(generatedKeys.next()).isTrue();
+        return generatedKeys.getLong(1);
+      }
+    }
+  }
+
+  private void insertHashtagPost(Long hashtagId, Long postId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            """
+                INSERT INTO hashtag_posts (
+                    hashtag_id,
+                    post_id
+                ) VALUES (?, ?)
+                """
+        )) {
+      statement.setLong(1, hashtagId);
+      statement.setLong(2, postId);
       statement.executeUpdate();
     }
   }
@@ -516,7 +690,7 @@ class PostMapperTest {
     }
   }
 
-  private void softDeletePost(Long postId) throws Exception {
+  private void deletePost(Long postId) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
             "UPDATE posts SET deleted_at = CURRENT_TIMESTAMP WHERE post_id = ?"
@@ -526,7 +700,7 @@ class PostMapperTest {
     }
   }
 
-  private void softDeleteUser(Long userId) throws Exception {
+  private void deleteUser(Long userId) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
             "UPDATE users SET deleted_at = ? WHERE user_id = ?"
@@ -537,7 +711,7 @@ class PostMapperTest {
     }
   }
 
-  private void softDeleteGroup(Long groupId) throws Exception {
+  private void deleteGroup(Long groupId) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
             "UPDATE user_groups SET deleted_at = ? WHERE group_id = ?"
@@ -548,7 +722,7 @@ class PostMapperTest {
     }
   }
 
-  private void softDeletePost(Long postId, LocalDateTime deletedAt) throws Exception {
+  private void deletePost(Long postId, LocalDateTime deletedAt) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
             "UPDATE posts SET deleted_at = ? WHERE post_id = ?"
@@ -585,6 +759,19 @@ class PostMapperTest {
     }
   }
 
+  private int countActivePostImages(Long postId) throws Exception {
+    Connection connection = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = connection.prepareStatement(
+        "SELECT COUNT(*) FROM post_images WHERE post_id = ? AND deleted_at IS NULL"
+    )) {
+      statement.setLong(1, postId);
+      try (ResultSet resultSet = statement.executeQuery()) {
+        resultSet.next();
+        return resultSet.getInt(1);
+      }
+    }
+  }
+
   private int countPostLikes(Long postId, Long userId) throws Exception {
     Connection connection = DataSourceUtils.getConnection(dataSource);
     try (PreparedStatement statement = connection.prepareStatement(
@@ -592,6 +779,45 @@ class PostMapperTest {
     )) {
       statement.setLong(1, postId);
       statement.setLong(2, userId);
+      try (ResultSet resultSet = statement.executeQuery()) {
+        resultSet.next();
+        return resultSet.getInt(1);
+      }
+    }
+  }
+
+  private int countCommentLikes(Long commentId) throws Exception {
+    Connection connection = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = connection.prepareStatement(
+        "SELECT COUNT(*) FROM comment_likes WHERE comment_id = ?"
+    )) {
+      statement.setLong(1, commentId);
+      try (ResultSet resultSet = statement.executeQuery()) {
+        resultSet.next();
+        return resultSet.getInt(1);
+      }
+    }
+  }
+
+  private int countHashtagPosts(Long postId) throws Exception {
+    Connection connection = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = connection.prepareStatement(
+        "SELECT COUNT(*) FROM hashtag_posts WHERE post_id = ?"
+    )) {
+      statement.setLong(1, postId);
+      try (ResultSet resultSet = statement.executeQuery()) {
+        resultSet.next();
+        return resultSet.getInt(1);
+      }
+    }
+  }
+
+  private int countActiveComments(Long postId) throws Exception {
+    Connection connection = DataSourceUtils.getConnection(dataSource);
+    try (PreparedStatement statement = connection.prepareStatement(
+        "SELECT COUNT(*) FROM comments WHERE post_id = ? AND deleted_at IS NULL"
+    )) {
+      statement.setLong(1, postId);
       try (ResultSet resultSet = statement.executeQuery()) {
         resultSet.next();
         return resultSet.getInt(1);

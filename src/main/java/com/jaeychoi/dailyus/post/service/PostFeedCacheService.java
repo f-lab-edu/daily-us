@@ -34,6 +34,10 @@ public class PostFeedCacheService {
     postFeedRepository.addPostIdToFeeds(userIds, postId, createdAt, MAX_FEED_CACHE_SIZE);
   }
 
+  public void removePostFromFeeds(List<Long> userIds, Long postId) {
+    postFeedRepository.removePostIdFromFeeds(userIds, postId);
+  }
+
   public List<PostFeedRow> refreshUserFeedCache(Long userId, long minimumSize) {
     long cacheSize = Math.max(minimumSize, MAX_FEED_CACHE_SIZE);
     List<PostFeedRow> rows = findFeedRows(userId, null, null, cacheSize);

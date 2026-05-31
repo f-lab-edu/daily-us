@@ -86,6 +86,21 @@
       AND deleted_at IS NULL
   </update>
 
+  <delete id="deleteMember">
+    DELETE
+    FROM group_members
+    WHERE group_id = #{groupId}
+      AND user_id = #{userId}
+  </delete>
+
+  <update id="decreaseMemberCount" parameterType="long">
+    UPDATE user_groups
+    SET member_count = member_count - 1
+    WHERE group_id = #{groupId}
+      AND deleted_at IS NULL
+      AND member_count > 0
+  </update>
+
   <select id="findActiveById"
     parameterType="long"
     resultMap="groupResultMap"

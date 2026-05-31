@@ -4,8 +4,12 @@ import com.jaeychoi.dailyus.common.exception.BaseException;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
+import com.jaeychoi.dailyus.post.repository.PostLikeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -13,19 +17,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class PostLikeService {
 
   private final PostMapper postMapper;
+  private final PostLikeRepository postLikeRepository;
 
   @Transactional
   public PostLikeResponse like(Long userId, Long postId) {
     validatePostExists(postId);
 
-    if (postMapper.countLikesByPostIdAndUserId(postId, userId) > 0) {
+    try {
+      postMapper.insertLike(postId, userId);
+    } catch (DuplicateKeyException e) {
       throw new BaseException(ErrorCode.POST_LIKE_ALREADY_EXISTS);
     }
 
-    postMapper.insertLike(postId, userId);
-    postMapper.incrementLikeCount(postId);
+    scheduleAfterCommit(() -> postLikeRepository.incrementDelta(postId));
 
-    return new PostLikeResponse(postId, true, getLikeCount(postId));
+    return new PostLikeResponse(postId, true, getLikeCount(postId, 1L));
   }
 
   @Transactional
@@ -37,9 +43,9 @@ public class PostLikeService {
       throw new BaseException(ErrorCode.POST_LIKE_NOT_FOUND);
     }
 
-    postMapper.decrementLikeCount(postId);
+    scheduleAfterCommit(() -> postLikeRepository.decrementDelta(postId));
 
-    return new PostLikeResponse(postId, false, getLikeCount(postId));
+    return new PostLikeResponse(postId, false, getLikeCount(postId, -1L));
   }
 
   private void validatePostExists(Long postId) {
@@ -48,7 +54,21 @@ public class PostLikeService {
     }
   }
 
-  private Long getLikeCount(Long postId) {
-    return postMapper.findLikeCountByPostId(postId);
+  private Long getLikeCount(Long postId, long delta) {
+    return Math.max(postMapper.findLikeCountByPostId(postId) + delta, 0L);
+  }
+
+  private void scheduleAfterCommit(Runnable action) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      action.run();
+      return;
+    }
+
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+      @Override
+      public void afterCommit() {
+        action.run();
+      }
+    });
   }
 }

@@ -11,8 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
+import com.jaeychoi.dailyus.comment.dto.CommentCreateRequest;
+import com.jaeychoi.dailyus.comment.dto.CommentCreateResponse;
 import com.jaeychoi.dailyus.comment.dto.CommentResponse;
 import com.jaeychoi.dailyus.comment.dto.CommentResponseItem;
+import com.jaeychoi.dailyus.comment.service.CommentCreateService;
 import com.jaeychoi.dailyus.comment.service.CommentGetService;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.common.exception.GlobalExceptionHandler;
@@ -20,12 +23,15 @@ import com.jaeychoi.dailyus.common.web.AuthRequestAttributes;
 import com.jaeychoi.dailyus.common.web.AuthenticatedUserArgumentResolver;
 import com.jaeychoi.dailyus.post.dto.PostCreateRequest;
 import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
+import com.jaeychoi.dailyus.post.dto.PostDetailResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedItemResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
 import com.jaeychoi.dailyus.post.dto.PostUpdateRequest;
 import com.jaeychoi.dailyus.post.dto.PostUpdateResponse;
 import com.jaeychoi.dailyus.post.service.PostCreateService;
+import com.jaeychoi.dailyus.post.service.PostDeleteService;
+import com.jaeychoi.dailyus.post.service.PostDetailService;
 import com.jaeychoi.dailyus.post.service.PostFeedService;
 import com.jaeychoi.dailyus.post.service.PostLikeService;
 import com.jaeychoi.dailyus.post.service.PostUpdateService;
@@ -53,7 +59,16 @@ class PostControllerTest {
   private PostFeedService postFeedService;
 
   @Mock
+  private PostDetailService postDetailService;
+
+  @Mock
   private PostLikeService postLikeService;
+
+  @Mock
+  private PostDeleteService postDeleteService;
+
+  @Mock
+  private CommentCreateService commentCreateService;
 
   @Mock
   private PostUpdateService postUpdateService;
@@ -72,7 +87,10 @@ class PostControllerTest {
     mockMvc = MockMvcBuilders.standaloneSetup(
             new PostController(
                 postCreateService,
+                postDeleteService,
                 postFeedService,
+                postDetailService,
+                commentCreateService,
                 commentGetService,
                 postLikeService,
                 postUpdateService))
@@ -257,6 +275,42 @@ class PostControllerTest {
   }
 
   @Test
+  void getDetailReturnsOkResponse() throws Exception {
+    when(postDetailService.getDetail(1L, 10L)).thenReturn(new PostDetailResponse(
+        10L,
+        2L,
+        "author",
+        "https://example.com/profile.png",
+        "detail content",
+        List.of("https://cdn.example.com/1.png", "https://cdn.example.com/2.png"),
+        3L,
+        true,
+        LocalDateTime.of(2026, 5, 17, 9, 0)
+    ));
+
+    mockMvc.perform(get("/api/v1/posts/10")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.postId").value(10L))
+        .andExpect(jsonPath("$.data.userId").value(2L))
+        .andExpect(jsonPath("$.data.nickname").value("author"))
+        .andExpect(jsonPath("$.data.imageUrls[0]").value("https://cdn.example.com/1.png"))
+        .andExpect(jsonPath("$.data.likeCount").value(3L))
+        .andExpect(jsonPath("$.data.likedByMe").value(true));
+  }
+
+  @Test
+  void getDetailReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(get("/api/v1/posts/10"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
   void getCommentsReturnsOkResponse() throws Exception {
     CommentResponse response = new CommentResponse(
         List.of(new CommentResponseItem(
@@ -268,6 +322,7 @@ class PostControllerTest {
             5L,
             true,
             LocalDateTime.of(2026, 4, 6, 10, 0),
+            false,
             null,
             List.of(new CommentResponseItem(
                 201L,
@@ -278,6 +333,7 @@ class PostControllerTest {
                 1L,
                 false,
                 LocalDateTime.of(2026, 4, 6, 10, 30),
+                true,
                 101L,
                 List.of()
             ))
@@ -300,6 +356,72 @@ class PostControllerTest {
         .andExpect(jsonPath("$.data.items[0].commentId").value(101L))
         .andExpect(jsonPath("$.data.items[0].likedByMe").value(true))
         .andExpect(jsonPath("$.data.items[0].replies[0].commentId").value(201L));
+  }
+
+  @Test
+  void createCommentReturnsCreatedResponse() throws Exception {
+    CommentCreateRequest request = new CommentCreateRequest("comment", null);
+    CommentCreateResponse response = new CommentCreateResponse(
+        101L,
+        10L,
+        1L,
+        "comment",
+        null,
+        0L,
+        LocalDateTime.of(2026, 4, 6, 10, 0)
+    );
+    when(commentCreateService.create(anyLong(), anyLong(), any(CommentCreateRequest.class)))
+        .thenReturn(response);
+
+    mockMvc.perform(post("/api/v1/posts/10/comments")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.commentId").value(101L))
+        .andExpect(jsonPath("$.data.postId").value(10L))
+        .andExpect(jsonPath("$.data.parentId").doesNotExist());
+  }
+
+  @Test
+  void createReplyReturnsCreatedResponse() throws Exception {
+    CommentCreateRequest request = new CommentCreateRequest("reply", 100L);
+    CommentCreateResponse response = new CommentCreateResponse(
+        201L,
+        10L,
+        1L,
+        "reply",
+        100L,
+        0L,
+        LocalDateTime.of(2026, 4, 6, 10, 30)
+    );
+    when(commentCreateService.create(anyLong(), anyLong(), any(CommentCreateRequest.class)))
+        .thenReturn(response);
+
+    mockMvc.perform(post("/api/v1/posts/10/comments")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.commentId").value(201L))
+        .andExpect(jsonPath("$.data.parentId").value(100L));
+  }
+
+  @Test
+  void createCommentReturnsBadRequestWhenContentIsBlank() throws Exception {
+    CommentCreateRequest request = new CommentCreateRequest(" ", null);
+
+    mockMvc.perform(post("/api/v1/posts/10/comments")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
   }
 
   @Test
@@ -342,6 +464,19 @@ class PostControllerTest {
   }
 
   @Test
+  void createCommentReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    CommentCreateRequest request = new CommentCreateRequest("comment", null);
+
+    mockMvc.perform(post("/api/v1/posts/10/comments")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
   void likePostReturnsCreatedResponse() throws Exception {
     when(postLikeService.like(1L, 10L)).thenReturn(new PostLikeResponse(10L, true, 3L));
 
@@ -370,8 +505,27 @@ class PostControllerTest {
   }
 
   @Test
+  void deletePostReturnsOkResponse() throws Exception {
+    mockMvc.perform(delete("/api/v1/posts/10")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
   void likePostReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
     mockMvc.perform(post("/api/v1/posts/10/like"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void deletePostReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(delete("/api/v1/posts/10"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))

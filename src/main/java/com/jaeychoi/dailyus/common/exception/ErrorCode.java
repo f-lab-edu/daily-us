@@ -19,6 +19,9 @@ public enum ErrorCode {
       "User has reached the maximum number of groups they can join."),
   GROUP_INVALID_CURSOR(HttpStatus.BAD_REQUEST, "GRP_005",
       "Both createdAt and groupId must be provided together."),
+  GROUP_NOT_JOINED(HttpStatus.FORBIDDEN, "GRP_006", "You are not a member of this group."),
+  GROUP_OWNER_CANNOT_LEAVE(HttpStatus.FORBIDDEN, "GRP_007",
+      "Group owner cannot leave the group."),
   USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USR_003", "User not found."),
   SELF_FOLLOW_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "USR_004", "You cannot follow yourself."),
   FOLLOW_ALREADY_EXISTS(HttpStatus.CONFLICT, "USR_005", "Follow relationship already exists."),
@@ -31,8 +34,15 @@ public enum ErrorCode {
   POST_LIKE_ALREADY_EXISTS(HttpStatus.CONFLICT, "PST_004",
       "Post like already exists."),
   POST_LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "PST_005", "Post like not found."),
+  POST_DELETE_FORBIDDEN(HttpStatus.FORBIDDEN, "PST_006",
+      "You do not have permission to delete this post."),
   COMMENT_INVALID_CURSOR(HttpStatus.BAD_REQUEST, "CMT_001",
-      "Both createdAt and commentId must be provided together.");
+      "Both createdAt and commentId must be provided together."),
+  COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CMT_002", "Comment not found."),
+  COMMENT_PARENT_MISMATCH(HttpStatus.BAD_REQUEST, "CMT_003",
+      "Parent comment does not belong to the post."),
+  COMMENT_REPLY_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "CMT_004",
+      "Replies can only be created for top-level comments.");
 
   private final HttpStatus status;
   private final String code;
