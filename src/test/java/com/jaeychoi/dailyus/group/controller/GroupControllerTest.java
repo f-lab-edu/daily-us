@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.group.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -18,6 +19,7 @@ import com.jaeychoi.dailyus.group.dto.GroupCreateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
 import com.jaeychoi.dailyus.group.dto.GroupDetailResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
+import com.jaeychoi.dailyus.group.dto.GroupLeaveResponse;
 import com.jaeychoi.dailyus.group.dto.GroupListItemResponse;
 import com.jaeychoi.dailyus.group.dto.GroupListResponse;
 import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
@@ -26,6 +28,7 @@ import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupDetailService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
+import com.jaeychoi.dailyus.group.service.GroupLeaveService;
 import com.jaeychoi.dailyus.group.service.GroupListService;
 import com.jaeychoi.dailyus.group.service.GroupMembersService;
 import com.jaeychoi.dailyus.group.service.GroupRankService;
@@ -56,6 +59,9 @@ class GroupControllerTest {
   private GroupJoinService groupJoinService;
 
   @Mock
+  private GroupLeaveService groupLeaveService;
+
+  @Mock
   private GroupListService groupListService;
 
   @Mock
@@ -76,6 +82,7 @@ class GroupControllerTest {
     objectMapper = new ObjectMapper();
     mockMvc = MockMvcBuilders.standaloneSetup(
             new GroupController(groupCreateService, groupDetailService, groupJoinService,
+                groupLeaveService,
                 groupListService, groupRankService, groupMembersService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
@@ -333,6 +340,46 @@ class GroupControllerTest {
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value(ErrorCode.GROUP_ALREADY_JOINED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_ALREADY_JOINED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void leaveGroupReturnsOkResponse() throws Exception {
+    GroupLeaveResponse response = new GroupLeaveResponse(1L, 2L);
+    when(groupLeaveService.leave(1L, 2L)).thenReturn(response);
+
+    mockMvc.perform(delete("/api/v1/groups/1/leave")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.message").doesNotExist())
+        .andExpect(jsonPath("$.data.groupId").value(1L))
+        .andExpect(jsonPath("$.data.userId").value(2L));
+  }
+
+  @Test
+  void leaveGroupReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(delete("/api/v1/groups/1/leave"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void leaveGroupReturnsForbiddenWhenUserIsNotMember() throws Exception {
+    when(groupLeaveService.leave(anyLong(), anyLong()))
+        .thenThrow(new BaseException(ErrorCode.GROUP_NOT_JOINED));
+
+    mockMvc.perform(delete("/api/v1/groups/1/leave")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester")))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value(ErrorCode.GROUP_NOT_JOINED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_NOT_JOINED.getMessage()))
         .andExpect(jsonPath("$.data").doesNotExist());
   }
 

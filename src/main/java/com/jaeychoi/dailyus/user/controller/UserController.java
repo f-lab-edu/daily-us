@@ -8,6 +8,7 @@ import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.user.dto.UserActivityResponse;
 import com.jaeychoi.dailyus.user.dto.UserFollowResponse;
 import com.jaeychoi.dailyus.user.dto.UserGroupResponse;
+import com.jaeychoi.dailyus.user.dto.UserMyProfileResponse;
 import com.jaeychoi.dailyus.user.dto.UserProfileResponse;
 import com.jaeychoi.dailyus.user.dto.UserProfileUpdateRequest;
 import com.jaeychoi.dailyus.user.service.UserActivityService;
@@ -37,8 +38,24 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
   private final UserFollowService userFollowService;
+  private final UserProfileService userProfileService;
   private final UserActivityService userActivityService;
   private final UserMyGroupService userMyGroupService;
+  private final UserPostService userPostService;
+
+  @GetMapping("/me")
+  @AuthRequired
+  public ApiResponse<UserMyProfileResponse> getMyProfile(@AuthenticatedUser CurrentUser user) {
+    return ApiResponse.success(userProfileService.getMyProfile(user.userId()));
+  }
+
+  @GetMapping("/{userId}")
+  @AuthRequired
+  public ApiResponse<UserProfileResponse> getUserProfile(
+      @AuthenticatedUser CurrentUser user,
+      @PathVariable("userId") Long targetUserId) {
+    return ApiResponse.success(userProfileService.getProfile(user.userId(), targetUserId));
+  }
 
   @GetMapping("/me/activities")
   @AuthRequired
@@ -57,14 +74,6 @@ public class UserController {
     return ApiResponse.success(response);
   }
 
-  private final UserProfileService userProfileService;
-
-  @GetMapping("/me")
-  @AuthRequired
-  public ApiResponse<UserProfileResponse> getMyProfile(@AuthenticatedUser CurrentUser user) {
-    return ApiResponse.success(userProfileService.getProfile(user.userId()));
-  }
-
   @PatchMapping("/me")
   @AuthRequired
   public ApiResponse<UserProfileResponse> updateMyProfile(
@@ -72,8 +81,6 @@ public class UserController {
       @Valid @RequestBody UserProfileUpdateRequest request) {
     return ApiResponse.success(userProfileService.updateProfile(user.userId(), request));
   }
-
-  private final UserPostService userPostService;
 
   @GetMapping("/me/posts")
   @AuthRequired

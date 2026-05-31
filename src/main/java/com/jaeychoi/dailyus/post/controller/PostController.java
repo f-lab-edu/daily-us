@@ -3,19 +3,29 @@ package com.jaeychoi.dailyus.post.controller;
 import com.jaeychoi.dailyus.auth.annotation.AuthRequired;
 import com.jaeychoi.dailyus.auth.annotation.AuthenticatedUser;
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
+import com.jaeychoi.dailyus.comment.dto.CommentCreateRequest;
+import com.jaeychoi.dailyus.comment.dto.CommentCreateResponse;
 import com.jaeychoi.dailyus.comment.dto.CommentResponse;
+import com.jaeychoi.dailyus.comment.service.CommentCreateService;
 import com.jaeychoi.dailyus.comment.service.CommentGetService;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
 import com.jaeychoi.dailyus.post.dto.PostCreateRequest;
 import com.jaeychoi.dailyus.post.dto.PostCreateResponse;
+import com.jaeychoi.dailyus.post.dto.PostDetailResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostLikeResponse;
+import com.jaeychoi.dailyus.post.dto.PostUpdateRequest;
+import com.jaeychoi.dailyus.post.dto.PostUpdateResponse;
 import com.jaeychoi.dailyus.post.service.PostCreateService;
+import com.jaeychoi.dailyus.post.service.PostDeleteService;
+import com.jaeychoi.dailyus.post.service.PostDetailService;
 import com.jaeychoi.dailyus.post.service.PostFeedService;
 import com.jaeychoi.dailyus.post.service.PostLikeService;
+import com.jaeychoi.dailyus.post.service.PostUpdateService;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,9 +44,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class PostController {
 
   private final PostCreateService postCreateService;
+  private final PostDeleteService postDeleteService;
   private final PostFeedService postFeedService;
+  private final PostDetailService postDetailService;
+  private final CommentCreateService commentCreateService;
   private final CommentGetService commentGetService;
   private final PostLikeService postLikeService;
+  private final PostUpdateService postUpdateService;
 
   @GetMapping
   @AuthRequired
@@ -47,6 +61,15 @@ public class PostController {
       @RequestParam(required = false) Long postId,
       @RequestParam(required = false, defaultValue = "10") Long size) {
     return ApiResponse.success(postFeedService.getFeed(user.userId(), createdAt, postId, size));
+  }
+
+  @GetMapping("/{postId}")
+  @AuthRequired
+  public ApiResponse<PostDetailResponse> getDetail(
+      @AuthenticatedUser CurrentUser user,
+      @PathVariable Long postId
+  ) {
+    return ApiResponse.success(postDetailService.getDetail(user.userId(), postId));
   }
 
   @GetMapping("/{postId}/comments")
@@ -65,12 +88,40 @@ public class PostController {
     );
   }
 
+  @PostMapping("/{postId}/comments")
+  @ResponseStatus(HttpStatus.CREATED)
+  @AuthRequired
+  public ApiResponse<CommentCreateResponse> createComment(
+      @PathVariable Long postId,
+      @AuthenticatedUser CurrentUser user,
+      @Valid @RequestBody CommentCreateRequest request
+  ) {
+    return ApiResponse.success(commentCreateService.create(postId, user.userId(), request));
+  }
+
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   @AuthRequired
   public ApiResponse<PostCreateResponse> createPost(@AuthenticatedUser CurrentUser user,
       @Valid @RequestBody PostCreateRequest request) {
     return ApiResponse.success(postCreateService.createPost(user.userId(), request));
+  }
+
+  @DeleteMapping("/{postId}")
+  @AuthRequired
+  public ApiResponse<Void> deletePost(@AuthenticatedUser CurrentUser user, @PathVariable Long postId) {
+    postDeleteService.deletePost(user.userId(), postId);
+    return ApiResponse.success(null);
+  }
+
+  @PatchMapping("/{postId}")
+  @AuthRequired
+  public ApiResponse<PostUpdateResponse> updatePost(
+      @AuthenticatedUser CurrentUser user,
+      @PathVariable Long postId,
+      @Valid @RequestBody PostUpdateRequest request
+  ) {
+    return ApiResponse.success(postUpdateService.updatePost(user.userId(), postId, request));
   }
 
   @PostMapping("/{postId}/like")

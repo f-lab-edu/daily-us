@@ -1,6 +1,7 @@
 package com.jaeychoi.dailyus.post.mapper;
 
 import com.jaeychoi.dailyus.post.domain.Post;
+import com.jaeychoi.dailyus.post.dto.PostDetailRow;
 import com.jaeychoi.dailyus.post.dto.PostFeedRow;
 import com.jaeychoi.dailyus.post.dto.PostImageRow;
 import java.time.LocalDateTime;
@@ -14,21 +15,35 @@ public interface PostMapper {
 
   void insertImages(Long postId, List<String> imageUrls);
 
-  boolean existsActiveById(Long postId);
+  void updateContent(Long postId, String content);
 
-  int countLikesByPostIdAndUserId(Long postId, Long userId);
+  void deleteImagesByPostId(Long postId);
+
+  boolean existsActiveById(Long postId);
 
   void insertLike(Long postId, Long userId);
 
   int deleteLike(Long postId, Long userId);
 
-  void incrementLikeCount(Long postId);
-
-  void decrementLikeCount(Long postId);
+  void applyLikeCountDelta(Long postId, Long delta);
 
   Long findLikeCountByPostId(Long postId);
 
   Post findById(Long postId);
+
+  int delete(Long postId, Long userId);
+
+  int deleteImagesByPostId(Long postId);
+
+  int deleteCommentsByPostId(Long postId);
+
+  int deleteCommentLikesByPostId(Long postId);
+
+  int deletePostLikesByPostId(Long postId);
+
+  int deleteHashtagsByPostId(Long postId);
+
+  PostDetailRow findDetailById(Long postId, Long userId);
 
   boolean existsFeedPosts(Long userId);
 

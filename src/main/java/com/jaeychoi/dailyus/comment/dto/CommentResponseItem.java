@@ -12,6 +12,7 @@ public record CommentResponseItem(
     Long likeCount,
     Boolean likedByMe,
     LocalDateTime createdAt,
+    Boolean edited,
     Long parentId,
     List<CommentResponseItem> replies
 ) {
