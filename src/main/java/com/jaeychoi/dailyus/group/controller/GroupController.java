@@ -8,12 +8,14 @@ import com.jaeychoi.dailyus.group.dto.GroupCreateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupCreateResponse;
 import com.jaeychoi.dailyus.group.dto.GroupDetailResponse;
 import com.jaeychoi.dailyus.group.dto.GroupJoinResponse;
+import com.jaeychoi.dailyus.group.dto.GroupLeaveResponse;
 import com.jaeychoi.dailyus.group.dto.GroupListResponse;
 import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupDetailService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
+import com.jaeychoi.dailyus.group.service.GroupLeaveService;
 import com.jaeychoi.dailyus.group.service.GroupListService;
 import com.jaeychoi.dailyus.group.service.GroupMembersService;
 import com.jaeychoi.dailyus.group.service.GroupRankService;
@@ -25,6 +27,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,6 +43,7 @@ public class GroupController {
   private final GroupCreateService groupCreateService;
   private final GroupDetailService groupDetailService;
   private final GroupJoinService groupJoinService;
+  private final GroupLeaveService groupLeaveService;
   private final GroupListService groupListService;
   private final GroupRankService groupRankService;
   private final GroupMembersService groupMembersService;
@@ -86,6 +90,14 @@ public class GroupController {
   public ApiResponse<GroupJoinResponse> joinGroup(@PathVariable Long groupId,
       @AuthenticatedUser CurrentUser user) {
     GroupJoinResponse response = groupJoinService.join(groupId, user.userId());
+    return ApiResponse.success(response);
+  }
+
+  @DeleteMapping("/{groupId}/leave")
+  @AuthRequired
+  public ApiResponse<GroupLeaveResponse> leaveGroup(@PathVariable Long groupId,
+      @AuthenticatedUser CurrentUser user) {
+    GroupLeaveResponse response = groupLeaveService.leave(groupId, user.userId());
     return ApiResponse.success(response);
   }
 
