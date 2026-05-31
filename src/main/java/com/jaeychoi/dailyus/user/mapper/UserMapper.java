@@ -17,6 +17,8 @@ public interface UserMapper {
 
   boolean existsActiveById(Long userId);
 
+  int updateProfile(User user);
+
   void incrementFollowerCount(Long userId);
 
   void incrementFolloweeCount(Long userId);

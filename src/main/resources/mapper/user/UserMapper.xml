@@ -111,6 +111,16 @@
         AND followee_count > 0
     </update>
 
+    <update id="updateProfile" parameterType="com.jaeychoi.dailyus.user.domain.User">
+      UPDATE users
+      SET nickname = #{nickname},
+          intro = #{intro},
+          profile_image = #{profileImage},
+          updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = #{userId}
+        AND deleted_at IS NULL
+    </update>
+
     <insert id="insert"
             parameterType="com.jaeychoi.dailyus.user.domain.User"
             useGeneratedKeys="true"

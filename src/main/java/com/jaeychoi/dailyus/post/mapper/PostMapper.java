@@ -17,8 +17,6 @@ public interface PostMapper {
 
   void updateContent(Long postId, String content);
 
-  void deleteImagesByPostId(Long postId);
-
   boolean existsActiveById(Long postId);
 
   void insertLike(Long postId, Long userId);

@@ -867,19 +867,6 @@ class PostMapperTest {
     }
   }
 
-  private int countActivePostImages(Long postId) throws Exception {
-    Connection connection = DataSourceUtils.getConnection(dataSource);
-    try (PreparedStatement statement = connection.prepareStatement(
-        "SELECT COUNT(*) FROM post_images WHERE post_id = ? AND deleted_at IS NULL"
-    )) {
-      statement.setLong(1, postId);
-      try (ResultSet resultSet = statement.executeQuery()) {
-        resultSet.next();
-        return resultSet.getInt(1);
-      }
-    }
-  }
-
   private String uniqueEmail(String prefix) {
     return prefix + "-" + UUID.randomUUID() + "@example.com";
   }
