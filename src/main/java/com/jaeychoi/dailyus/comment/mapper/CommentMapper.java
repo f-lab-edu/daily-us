@@ -13,6 +13,8 @@ public interface CommentMapper {
 
   boolean existsActivePostById(Long postId);
 
+  Comment findActiveById(Long commentId);
+
   Comment findActiveCommentById(Long commentId);
 
   List<CommentRow> findComments(Long postId, Long userId, Long size, LocalDateTime createdAt,
@@ -24,4 +26,8 @@ public interface CommentMapper {
       LocalDateTime createdAt, Long replyId);
 
   int updateContent(Long commentId, String content);
+
+  int deleteCommentLikes(Long commentId, boolean includeReplies);
+
+  int delete(Long commentId, boolean includeReplies);
 }

@@ -2,7 +2,9 @@ package com.jaeychoi.dailyus.comment.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -13,6 +15,7 @@ import com.jaeychoi.dailyus.comment.dto.CommentResponse;
 import com.jaeychoi.dailyus.comment.dto.CommentResponseItem;
 import com.jaeychoi.dailyus.comment.dto.CommentUpdateRequest;
 import com.jaeychoi.dailyus.comment.dto.CommentUpdateResponse;
+import com.jaeychoi.dailyus.comment.service.CommentDeleteService;
 import com.jaeychoi.dailyus.comment.service.CommentGetService;
 import com.jaeychoi.dailyus.comment.service.CommentUpdateService;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
@@ -37,6 +40,8 @@ import tools.jackson.databind.ObjectMapper;
 class CommentControllerTest {
 
   @Mock
+  private CommentDeleteService commentDeleteService;
+  @Mock
   private CommentGetService commentGetService;
   @Mock
   private CommentUpdateService commentUpdateService;
@@ -50,13 +55,34 @@ class CommentControllerTest {
     validator.afterPropertiesSet();
 
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new CommentController(commentUpdateService, commentGetService))
+            new CommentController(commentDeleteService, commentUpdateService, commentGetService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
         .build();
     objectMapper = new ObjectMapper();
+  }
+
+  @Test
+  void deleteReturnsOkResponse() throws Exception {
+    mockMvc.perform(delete("/api/v1/comments/10")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data").doesNotExist());
+
+    verify(commentDeleteService).delete(1L, 10L);
+  }
+
+  @Test
+  void deleteReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(delete("/api/v1/comments/10"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
   }
 
   @Test

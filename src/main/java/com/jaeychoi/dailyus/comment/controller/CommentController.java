@@ -4,15 +4,17 @@ import com.jaeychoi.dailyus.auth.annotation.AuthRequired;
 import com.jaeychoi.dailyus.auth.annotation.AuthenticatedUser;
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
 import com.jaeychoi.dailyus.comment.dto.CommentResponse;
-import com.jaeychoi.dailyus.comment.service.CommentGetService;
 import com.jaeychoi.dailyus.comment.dto.CommentUpdateRequest;
 import com.jaeychoi.dailyus.comment.dto.CommentUpdateResponse;
+import com.jaeychoi.dailyus.comment.service.CommentDeleteService;
+import com.jaeychoi.dailyus.comment.service.CommentGetService;
 import com.jaeychoi.dailyus.comment.service.CommentUpdateService;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
-import java.time.LocalDateTime;
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,8 +28,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CommentController {
 
+  private final CommentDeleteService commentDeleteService;
   private final CommentUpdateService commentUpdateService;
   private final CommentGetService commentGetService;
+
+  @DeleteMapping("/{commentId}")
+  @AuthRequired
+  public ApiResponse<Void> delete(
+      @AuthenticatedUser CurrentUser user,
+      @PathVariable Long commentId
+  ) {
+    commentDeleteService.delete(user.userId(), commentId);
+    return ApiResponse.success(null);
+  }
 
   @PatchMapping("/{commentId}")
   @AuthRequired
