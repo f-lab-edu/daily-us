@@ -1,35 +1,27 @@
 package com.jaeychoi.dailyus.comment.mapper;
 
+import com.jaeychoi.dailyus.comment.domain.Comment;
 import com.jaeychoi.dailyus.comment.dto.CommentRow;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface CommentMapper {
 
-  boolean existsActivePostById(@Param("postId") Long postId);
+  void insert(Comment comment);
 
-  List<CommentRow> findComments(
-      @Param("postId") Long postId,
-      @Param("userId") Long userId,
-      @Param("size") Long size,
-      @Param("createdAt") LocalDateTime createdAt,
-      @Param("commentId") Long commentId
-  );
+  boolean existsActivePostById(Long postId);
 
-  List<CommentRow> findRepliesByParentIds(
-      @Param("parentIds") List<Long> parentIds,
-      @Param("userId") Long userId,
-      @Param("limit") Long limit
-  );
+  Comment findActiveCommentById(Long commentId);
 
-  List<CommentRow> findReplies(
-      @Param("parentCommentId") Long parentCommentId,
-      @Param("userId") Long userId,
-      @Param("size") Long size,
-      @Param("createdAt") LocalDateTime createdAt,
-      @Param("replyId") Long replyId
-  );
+  List<CommentRow> findComments(Long postId, Long userId, Long size, LocalDateTime createdAt,
+      Long commentId);
+
+  List<CommentRow> findRepliesByParentIds(List<Long> parentIds, Long userId, Long limit);
+
+  List<CommentRow> findReplies(Long parentCommentId, Long userId, Long size,
+      LocalDateTime createdAt, Long replyId);
+
+  int updateContent(Long commentId, String content);
 }

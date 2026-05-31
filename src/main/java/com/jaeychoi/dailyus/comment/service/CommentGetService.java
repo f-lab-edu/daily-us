@@ -120,6 +120,7 @@ public class CommentGetService {
             row.likeCount(),
             row.likedByMe(),
             row.createdAt(),
+            row.edited(),
             row.parentId(),
             repliesByParentId.getOrDefault(row.commentId(), Collections.emptyList())
         ))
@@ -162,6 +163,7 @@ public class CommentGetService {
         row.likeCount(),
         row.likedByMe(),
         row.createdAt(),
+        row.edited(),
         row.parentId(),
         Collections.emptyList()
     );
