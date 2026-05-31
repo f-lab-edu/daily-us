@@ -3,7 +3,10 @@ package com.jaeychoi.dailyus.post.controller;
 import com.jaeychoi.dailyus.auth.annotation.AuthRequired;
 import com.jaeychoi.dailyus.auth.annotation.AuthenticatedUser;
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
+import com.jaeychoi.dailyus.comment.dto.CommentCreateRequest;
+import com.jaeychoi.dailyus.comment.dto.CommentCreateResponse;
 import com.jaeychoi.dailyus.comment.dto.CommentResponse;
+import com.jaeychoi.dailyus.comment.service.CommentCreateService;
 import com.jaeychoi.dailyus.comment.service.CommentGetService;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
 import com.jaeychoi.dailyus.post.dto.PostCreateRequest;
@@ -35,6 +38,7 @@ public class PostController {
 
   private final PostCreateService postCreateService;
   private final PostFeedService postFeedService;
+  private final CommentCreateService commentCreateService;
   private final CommentGetService commentGetService;
   private final PostLikeService postLikeService;
 
@@ -63,6 +67,17 @@ public class PostController {
     return ApiResponse.success(
         commentGetService.getComments(postId, user.userId(), createdAt, commentId, size)
     );
+  }
+
+  @PostMapping("/{postId}/comments")
+  @ResponseStatus(HttpStatus.CREATED)
+  @AuthRequired
+  public ApiResponse<CommentCreateResponse> createComment(
+      @PathVariable Long postId,
+      @AuthenticatedUser CurrentUser user,
+      @Valid @RequestBody CommentCreateRequest request
+  ) {
+    return ApiResponse.success(commentCreateService.create(postId, user.userId(), request));
   }
 
   @PostMapping

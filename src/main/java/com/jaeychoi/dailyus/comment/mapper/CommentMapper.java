@@ -1,5 +1,6 @@
 package com.jaeychoi.dailyus.comment.mapper;
 
+import com.jaeychoi.dailyus.comment.domain.Comment;
 import com.jaeychoi.dailyus.comment.dto.CommentRow;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,7 +10,11 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface CommentMapper {
 
+  void insert(Comment comment);
+
   boolean existsActivePostById(@Param("postId") Long postId);
+
+  Comment findActiveCommentById(@Param("commentId") Long commentId);
 
   List<CommentRow> findComments(
       @Param("postId") Long postId,
