@@ -40,6 +40,7 @@ class CommentGetServiceTest {
         3L,
         true,
         LocalDateTime.of(2026, 4, 6, 10, 0),
+        false,
         null
     );
     CommentRow secondComment = new CommentRow(
@@ -51,6 +52,7 @@ class CommentGetServiceTest {
         1L,
         false,
         LocalDateTime.of(2026, 4, 6, 9, 0),
+        true,
         null
     );
     CommentRow thirdComment = new CommentRow(
@@ -62,6 +64,7 @@ class CommentGetServiceTest {
         0L,
         false,
         LocalDateTime.of(2026, 4, 6, 8, 0),
+        false,
         null
     );
     CommentRow reply = new CommentRow(
@@ -73,6 +76,7 @@ class CommentGetServiceTest {
         2L,
         true,
         LocalDateTime.of(2026, 4, 6, 10, 30),
+        true,
         101L
     );
 
@@ -87,9 +91,12 @@ class CommentGetServiceTest {
     assertThat(response.items()).hasSize(2);
     assertThat(response.items().get(0).commentId()).isEqualTo(101L);
     assertThat(response.items().get(0).likedByMe()).isTrue();
+    assertThat(response.items().get(0).edited()).isFalse();
     assertThat(response.items().get(0).replies()).hasSize(1);
     assertThat(response.items().get(0).replies().get(0).commentId()).isEqualTo(201L);
+    assertThat(response.items().get(0).replies().get(0).edited()).isTrue();
     assertThat(response.items().get(1).commentId()).isEqualTo(100L);
+    assertThat(response.items().get(1).edited()).isTrue();
     assertThat(response.items().get(1).replies()).isEmpty();
     assertThat(response.lastCreatedAt()).isEqualTo(LocalDateTime.of(2026, 4, 6, 9, 0));
     assertThat(response.lastCommentId()).isEqualTo(100L);

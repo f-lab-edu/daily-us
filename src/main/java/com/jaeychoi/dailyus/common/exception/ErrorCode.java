@@ -34,8 +34,15 @@ public enum ErrorCode {
   POST_LIKE_ALREADY_EXISTS(HttpStatus.CONFLICT, "PST_004",
       "Post like already exists."),
   POST_LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "PST_005", "Post like not found."),
+  POST_DELETE_FORBIDDEN(HttpStatus.FORBIDDEN, "PST_006",
+      "You do not have permission to delete this post."),
   COMMENT_INVALID_CURSOR(HttpStatus.BAD_REQUEST, "CMT_001",
-      "Both createdAt and commentId must be provided together.");
+      "Both createdAt and commentId must be provided together."),
+  COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "CMT_002", "Comment not found."),
+  COMMENT_PARENT_MISMATCH(HttpStatus.BAD_REQUEST, "CMT_003",
+      "Parent comment does not belong to the post."),
+  COMMENT_REPLY_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "CMT_004",
+      "Replies can only be created for top-level comments.");
 
   private final HttpStatus status;
   private final String code;

@@ -2,6 +2,7 @@ package com.jaeychoi.dailyus.comment.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.jaeychoi.dailyus.comment.domain.Comment;
 import com.jaeychoi.dailyus.comment.dto.CommentRow;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -14,6 +15,7 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @MybatisTest
 class CommentMapperTest {
@@ -23,6 +25,39 @@ class CommentMapperTest {
 
   @Autowired
   private DataSource dataSource;
+
+  @Autowired
+  private JdbcTemplate jdbcTemplate;
+
+  @Test
+  void insertPersistsCommentAndSetsGeneratedKey() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long postId = insertPost(userId, "post");
+    Comment comment = Comment.builder()
+        .userId(userId)
+        .postId(postId)
+        .content("comment")
+        .build();
+
+    commentMapper.insert(comment);
+
+    assertThat(comment.getCommentId()).isNotNull();
+    assertThat(commentMapper.findActiveCommentById(comment.getCommentId())).isNotNull();
+  }
+
+  @Test
+  void findActiveCommentByIdReturnsOnlyNonDeletedComment() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long postId = insertPost(userId, "post");
+    Long commentId = insertComment(userId, postId, null, "comment");
+
+    Comment comment = commentMapper.findActiveCommentById(commentId);
+
+    assertThat(comment).isNotNull();
+    assertThat(comment.getCommentId()).isEqualTo(commentId);
+    assertThat(comment.getPostId()).isEqualTo(postId);
+    assertThat(comment.getParentId()).isNull();
+  }
 
   @Test
   void existsActivePostByIdReturnsTrueOnlyForActivePost() throws Exception {
@@ -47,6 +82,9 @@ class CommentMapperTest {
     updateCommentCreatedAt(olderCommentId, LocalDateTime.of(2026, 4, 6, 8, 0));
     updateCommentCreatedAt(newerCommentId, LocalDateTime.of(2026, 4, 6, 9, 0));
     updateCommentCreatedAt(replyId, LocalDateTime.of(2026, 4, 6, 10, 0));
+    updateCommentUpdatedAt(olderCommentId, LocalDateTime.of(2026, 4, 6, 8, 0));
+    updateCommentUpdatedAt(newerCommentId, LocalDateTime.of(2026, 4, 6, 9, 0));
+    updateCommentUpdatedAt(replyId, LocalDateTime.of(2026, 4, 6, 10, 0));
     insertCommentLike(newerCommentId, loginUserId);
 
     List<CommentRow> rows = commentMapper.findComments(postId, loginUserId, 10L, null, null);
@@ -54,7 +92,9 @@ class CommentMapperTest {
     assertThat(rows).extracting(CommentRow::commentId)
         .containsExactly(newerCommentId, olderCommentId);
     assertThat(rows.get(0).likedByMe()).isTrue();
+    assertThat(rows.get(0).edited()).isFalse();
     assertThat(rows.get(1).likedByMe()).isFalse();
+    assertThat(rows.get(1).edited()).isFalse();
     assertThat(rows).allMatch(row -> row.parentId() == null);
   }
 
@@ -76,6 +116,11 @@ class CommentMapperTest {
     updateCommentCreatedAt(thirdReplyId, LocalDateTime.of(2026, 4, 6, 10, 0));
     updateCommentCreatedAt(fourthReplyId, LocalDateTime.of(2026, 4, 6, 11, 0));
     updateCommentCreatedAt(otherReplyId, LocalDateTime.of(2026, 4, 6, 7, 0));
+    updateCommentUpdatedAt(firstReplyId, LocalDateTime.of(2026, 4, 6, 8, 0));
+    updateCommentUpdatedAt(secondReplyId, LocalDateTime.of(2026, 4, 6, 9, 0));
+    updateCommentUpdatedAt(thirdReplyId, LocalDateTime.of(2026, 4, 6, 10, 0));
+    updateCommentUpdatedAt(fourthReplyId, LocalDateTime.of(2026, 4, 6, 11, 0));
+    updateCommentUpdatedAt(otherReplyId, LocalDateTime.of(2026, 4, 6, 7, 0));
     insertCommentLike(secondReplyId, loginUserId);
 
     List<CommentRow> rows =
@@ -87,6 +132,108 @@ class CommentMapperTest {
         .containsExactly(parentOneId, parentOneId, parentOneId, parentTwoId);
     assertThat(rows).extracting(CommentRow::likedByMe)
         .containsExactly(false, false, true, false);
+    assertThat(rows).extracting(CommentRow::edited)
+        .containsExactly(false, false, false, false);
+  }
+
+  @Test
+  void updateContentUpdatesCommentTextAndTimestamp() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long postId = insertPost(userId, "post");
+    Long commentId = insertComment(userId, postId, null, "before");
+    updateCommentUpdatedAt(commentId, LocalDateTime.of(2026, 4, 6, 8, 0));
+
+    assertThat(commentMapper.updateContent(commentId, "after")).isEqualTo(1);
+
+    Comment updatedComment = commentMapper.findActiveCommentById(commentId);
+    assertThat(updatedComment.getContent()).isEqualTo("after");
+    assertThat(updatedComment.getUpdatedAt()).isAfter(LocalDateTime.of(2026, 4, 6, 8, 0));
+  }
+
+  @Test
+  void findRepliesReturnsRepliesByCursorOrder() throws Exception {
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long replierId = insertUser(uniqueEmail("replier"), uniqueNickname("replier"));
+    Long postId = insertPost(authorId, "post");
+    Long parentId = insertComment(authorId, postId, null, "parent");
+    Long firstReplyId = insertComment(replierId, postId, parentId, "reply-1");
+    Long secondReplyId = insertComment(loginUserId, postId, parentId, "reply-2");
+    Long thirdReplyId = insertComment(replierId, postId, parentId, "reply-3");
+    Long fourthReplyId = insertComment(authorId, postId, parentId, "reply-4");
+    updateCommentCreatedAt(firstReplyId, LocalDateTime.of(2026, 4, 6, 8, 0));
+    updateCommentCreatedAt(secondReplyId, LocalDateTime.of(2026, 4, 6, 9, 0));
+    updateCommentCreatedAt(thirdReplyId, LocalDateTime.of(2026, 4, 6, 10, 0));
+    updateCommentCreatedAt(fourthReplyId, LocalDateTime.of(2026, 4, 6, 11, 0));
+    insertCommentLike(secondReplyId, loginUserId);
+
+    List<CommentRow> rows = commentMapper.findReplies(
+        parentId,
+        loginUserId,
+        2L,
+        LocalDateTime.of(2026, 4, 6, 11, 0),
+        fourthReplyId
+    );
+
+    assertThat(rows).extracting(CommentRow::commentId)
+        .containsExactly(thirdReplyId, secondReplyId);
+    assertThat(rows).extracting(CommentRow::parentId)
+        .containsExactly(parentId, parentId);
+    assertThat(rows).extracting(CommentRow::likedByMe)
+        .containsExactly(false, true);
+  }
+
+  @Test
+  void findActiveByIdReturnsOnlyActiveComment() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long postId = insertPost(authorId, "post");
+    Long activeCommentId = insertComment(authorId, postId, null, "active");
+    Long deletedCommentId = insertComment(authorId, postId, null, "deleted");
+    updateCommentDeletedAt(deletedCommentId, LocalDateTime.of(2026, 4, 6, 12, 0));
+
+    Comment activeComment = commentMapper.findActiveById(activeCommentId);
+    Comment deletedComment = commentMapper.findActiveById(deletedCommentId);
+
+    assertThat(activeComment).isNotNull();
+    assertThat(activeComment.getCommentId()).isEqualTo(activeCommentId);
+    assertThat(activeComment.getUserId()).isEqualTo(authorId);
+    assertThat(activeComment.getParentId()).isNull();
+    assertThat(deletedComment).isNull();
+  }
+
+  @Test
+  void deleteCommentLikesRemovesParentAndReplyLikes() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long likerId = insertUser(uniqueEmail("liker"), uniqueNickname("liker"));
+    Long postId = insertPost(authorId, "post");
+    Long parentCommentId = insertComment(authorId, postId, null, "parent");
+    Long replyCommentId = insertComment(authorId, postId, parentCommentId, "reply");
+    insertCommentLike(parentCommentId, likerId);
+    insertCommentLike(replyCommentId, likerId);
+
+    int deletedCount = commentMapper.deleteCommentLikes(parentCommentId, true);
+
+    assertThat(deletedCount).isEqualTo(2);
+    assertThat(countCommentLikes(parentCommentId)).isZero();
+    assertThat(countCommentLikes(replyCommentId)).isZero();
+  }
+
+  @Test
+  void deleteMarksParentAndRepliesDeletedAndResetsLikeCount() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long postId = insertPost(authorId, "post");
+    Long parentCommentId = insertComment(authorId, postId, null, "parent");
+    Long replyCommentId = insertComment(authorId, postId, parentCommentId, "reply");
+    updateCommentLikeCount(parentCommentId, 5L);
+    updateCommentLikeCount(replyCommentId, 2L);
+
+    int updatedCount = commentMapper.delete(parentCommentId, true);
+
+    assertThat(updatedCount).isEqualTo(2);
+    assertThat(readDeletedAt(parentCommentId)).isNotNull();
+    assertThat(readDeletedAt(replyCommentId)).isNotNull();
+    assertThat(readLikeCount(parentCommentId)).isZero();
+    assertThat(readLikeCount(replyCommentId)).isZero();
   }
 
   private Long insertUser(String email, String nickname) throws Exception {
@@ -200,6 +347,17 @@ class CommentMapperTest {
     }
   }
 
+  private void updateCommentUpdatedAt(Long commentId, LocalDateTime updatedAt) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE comments SET updated_at = ? WHERE comment_id = ?"
+        )) {
+      statement.setTimestamp(1, Timestamp.valueOf(updatedAt));
+      statement.setLong(2, commentId);
+      statement.executeUpdate();
+    }
+  }
+
   private void updatePostDeletedAt(Long postId, LocalDateTime deletedAt) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
@@ -209,6 +367,57 @@ class CommentMapperTest {
       statement.setLong(2, postId);
       statement.executeUpdate();
     }
+  }
+
+  private void updateCommentDeletedAt(Long commentId, LocalDateTime deletedAt) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE comments SET deleted_at = ? WHERE comment_id = ?"
+        )) {
+      statement.setTimestamp(1, Timestamp.valueOf(deletedAt));
+      statement.setLong(2, commentId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void updateCommentLikeCount(Long commentId, Long likeCount) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE comments SET like_count = ? WHERE comment_id = ?"
+        )) {
+      statement.setLong(1, likeCount);
+      statement.setLong(2, commentId);
+      statement.executeUpdate();
+    }
+  }
+
+  private LocalDateTime readDeletedAt(Long commentId) throws Exception {
+    Timestamp deletedAt = jdbcTemplate.queryForObject(
+        "SELECT deleted_at FROM comments WHERE comment_id = ?",
+        Timestamp.class,
+        commentId
+    );
+    return deletedAt == null ? null : deletedAt.toLocalDateTime();
+  }
+
+  private long readLikeCount(Long commentId) {
+    Long likeCount = jdbcTemplate.queryForObject(
+        "SELECT like_count FROM comments WHERE comment_id = ?",
+        Long.class,
+        commentId
+    );
+    assertThat(likeCount).isNotNull();
+    return likeCount;
+  }
+
+  private int countCommentLikes(Long commentId) {
+    Integer count = jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM comment_likes WHERE comment_id = ?",
+        Integer.class,
+        commentId
+    );
+    assertThat(count).isNotNull();
+    return count;
   }
 
   private String uniqueEmail(String prefix) {
