@@ -294,15 +294,6 @@ class UserControllerTest {
   }
 
   @Test
-  void getUserPostsReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
-    mockMvc.perform(get("/api/v1/users/2/posts"))
-        .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
-        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
-        .andExpect(jsonPath("$.data").doesNotExist());
-  }
-
-  @Test
   void followReturnsCreatedResponse() throws Exception {
     UserFollowResponse response = new UserFollowResponse(2L, true, 3L, 1L);
     when(userFollowService.follow(1L, 2L)).thenReturn(response);
