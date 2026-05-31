@@ -19,7 +19,8 @@ public class Comment {
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
   private LocalDateTime deletedAt;
-  private Long likeCount;
+  @Builder.Default
+  private Long likeCount = 0L;
   private Long userId;
   private Long postId;
   private Long parentId;

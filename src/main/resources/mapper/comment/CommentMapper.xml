@@ -31,6 +31,23 @@
         </constructor>
     </resultMap>
 
+    <insert id="insert"
+            parameterType="com.jaeychoi.dailyus.comment.domain.Comment"
+            useGeneratedKeys="true"
+            keyProperty="commentId">
+        INSERT INTO comments (
+            content,
+            user_id,
+            post_id,
+            parent_id
+        ) VALUES (
+            #{content},
+            #{userId},
+            #{postId},
+            #{parentId}
+        )
+    </insert>
+
     <select id="existsActivePostById" resultType="boolean">
         SELECT EXISTS (
             SELECT 1
@@ -38,6 +55,21 @@
             WHERE p.post_id = #{postId}
               AND p.deleted_at IS NULL
         )
+    </select>
+
+    <select id="findActiveCommentById" resultMap="commentResultMap">
+        SELECT comment_id,
+               content,
+               created_at,
+               updated_at,
+               deleted_at,
+               like_count,
+               user_id,
+               post_id,
+               parent_id
+        FROM comments
+        WHERE comment_id = #{commentId}
+          AND deleted_at IS NULL
     </select>
 
     <select id="findComments" resultMap="commentRowResultMap">

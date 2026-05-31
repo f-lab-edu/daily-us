@@ -26,6 +26,36 @@ class CommentMapperTest {
   private DataSource dataSource;
 
   @Test
+  void insertPersistsCommentAndSetsGeneratedKey() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long postId = insertPost(userId, "post");
+    Comment comment = Comment.builder()
+        .userId(userId)
+        .postId(postId)
+        .content("comment")
+        .build();
+
+    commentMapper.insert(comment);
+
+    assertThat(comment.getCommentId()).isNotNull();
+    assertThat(commentMapper.findActiveCommentById(comment.getCommentId())).isNotNull();
+  }
+
+  @Test
+  void findActiveCommentByIdReturnsOnlyNonDeletedComment() throws Exception {
+    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long postId = insertPost(userId, "post");
+    Long commentId = insertComment(userId, postId, null, "comment");
+
+    Comment comment = commentMapper.findActiveCommentById(commentId);
+
+    assertThat(comment).isNotNull();
+    assertThat(comment.getCommentId()).isEqualTo(commentId);
+    assertThat(comment.getPostId()).isEqualTo(postId);
+    assertThat(comment.getParentId()).isNull();
+  }
+
+  @Test
   void existsActivePostByIdReturnsTrueOnlyForActivePost() throws Exception {
     Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
     Long activePostId = insertPost(userId, "active");

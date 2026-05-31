@@ -10,7 +10,11 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface CommentMapper {
 
+  void insert(Comment comment);
+
   boolean existsActivePostById(@Param("postId") Long postId);
+
+  Comment findActiveCommentById(@Param("commentId") Long commentId);
 
   List<CommentRow> findComments(
       @Param("postId") Long postId,
