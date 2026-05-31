@@ -30,19 +30,14 @@ public class CommentCreateService {
 
     commentMapper.insert(comment);
 
-    Comment savedComment = commentMapper.findActiveCommentById(comment.getCommentId());
-    if (savedComment == null) {
-      throw new IllegalStateException("Saved comment must exist after insert.");
-    }
-
     return new CommentCreateResponse(
-        savedComment.getCommentId(),
-        savedComment.getPostId(),
-        savedComment.getUserId(),
-        savedComment.getContent(),
-        savedComment.getParentId(),
-        savedComment.getLikeCount(),
-        savedComment.getCreatedAt()
+        comment.getCommentId(),
+        comment.getPostId(),
+        comment.getUserId(),
+        comment.getContent(),
+        comment.getParentId(),
+        comment.getLikeCount(),
+        comment.getCreatedAt()
     );
   }
 
