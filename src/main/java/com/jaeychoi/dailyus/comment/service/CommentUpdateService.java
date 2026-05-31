@@ -27,13 +27,12 @@ public class CommentUpdateService {
     }
 
     commentMapper.updateContent(commentId, request.content());
-    Comment updatedComment = commentMapper.findActiveCommentById(commentId);
 
     return new CommentUpdateResponse(
-        updatedComment.getCommentId(),
-        updatedComment.getContent(),
+        comment.getCommentId(),
+        comment.getContent(),
         true,
-        updatedComment.getUpdatedAt()
+        comment.getUpdatedAt()
     );
   }
 }
