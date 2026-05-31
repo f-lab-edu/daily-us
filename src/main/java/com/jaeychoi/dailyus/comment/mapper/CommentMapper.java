@@ -5,35 +5,23 @@ import com.jaeychoi.dailyus.comment.dto.CommentRow;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface CommentMapper {
 
   void insert(Comment comment);
 
-  boolean existsActivePostById(@Param("postId") Long postId);
+  boolean existsActivePostById(Long postId);
 
-  Comment findActiveCommentById(@Param("commentId") Long commentId);
+  Comment findActiveCommentById(Long commentId);
 
-  List<CommentRow> findComments(
-      @Param("postId") Long postId,
-      @Param("userId") Long userId,
-      @Param("size") Long size,
-      @Param("createdAt") LocalDateTime createdAt,
-      @Param("commentId") Long commentId
-  );
+  List<CommentRow> findComments(Long postId, Long userId, Long size, LocalDateTime createdAt,
+      Long commentId);
 
-  List<CommentRow> findRepliesByParentIds(
-      @Param("parentIds") List<Long> parentIds,
-      @Param("userId") Long userId,
-      @Param("limit") Long limit
-  );
+  List<CommentRow> findRepliesByParentIds(List<Long> parentIds, Long userId, Long limit);
 
-  Comment findActiveCommentById(@Param("commentId") Long commentId);
+  List<CommentRow> findReplies(Long parentCommentId, Long userId, Long size,
+      LocalDateTime createdAt, Long replyId);
 
-  int updateContent(
-      @Param("commentId") Long commentId,
-      @Param("content") String content
-  );
+  int updateContent(Long commentId, String content);
 }

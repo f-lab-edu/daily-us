@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 public record CommentUpdateResponse(
     Long commentId,
     String content,
-    boolean edited,
-    LocalDateTime updatedAt
+    boolean edited
 ) {
 }

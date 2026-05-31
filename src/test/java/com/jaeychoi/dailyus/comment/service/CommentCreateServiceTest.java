@@ -38,15 +38,6 @@ class CommentCreateServiceTest {
       comment.setCommentId(101L);
       return null;
     }).when(commentMapper).insert(any(Comment.class));
-    when(commentMapper.findActiveCommentById(101L)).thenReturn(Comment.builder()
-        .commentId(101L)
-        .postId(10L)
-        .userId(1L)
-        .content("comment")
-        .parentId(null)
-        .likeCount(0L)
-        .createdAt(LocalDateTime.of(2026, 4, 6, 10, 0))
-        .build());
 
     CommentCreateResponse response =
         commentCreateService.create(10L, 1L, new CommentCreateRequest("comment", null));
@@ -70,15 +61,6 @@ class CommentCreateServiceTest {
       comment.setCommentId(201L);
       return null;
     }).when(commentMapper).insert(any(Comment.class));
-    when(commentMapper.findActiveCommentById(201L)).thenReturn(Comment.builder()
-        .commentId(201L)
-        .postId(10L)
-        .userId(1L)
-        .content("reply")
-        .parentId(100L)
-        .likeCount(0L)
-        .createdAt(LocalDateTime.of(2026, 4, 6, 10, 30))
-        .build());
 
     CommentCreateResponse response =
         commentCreateService.create(10L, 1L, new CommentCreateRequest("reply", 100L));
