@@ -3,6 +3,7 @@ package com.jaeychoi.dailyus.post.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jaeychoi.dailyus.post.domain.Post;
+import com.jaeychoi.dailyus.post.dto.PostDetailRow;
 import com.jaeychoi.dailyus.post.dto.PostFeedRow;
 import com.jaeychoi.dailyus.post.dto.PostImageRow;
 import java.sql.Connection;
@@ -100,6 +101,43 @@ class PostMapperTest {
     postMapper.applyLikeCountDelta(postId, -1L);
 
     assertThat(findPostLikeCount(postId)).isZero();
+  }
+
+  @Test
+  void findDetailByIdReturnsActivePostDetailWithLikedByMe() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long postId = insertPost(authorId, "detail content");
+    updatePostCreatedAt(postId, LocalDateTime.of(2026, 5, 17, 9, 0));
+    postMapper.insertImages(postId, List.of(
+        "https://cdn.example.com/1.png",
+        "https://cdn.example.com/2.png"
+    ));
+    postMapper.insertLike(postId, loginUserId);
+    postMapper.applyLikeCountDelta(postId, 1L);
+
+    PostDetailRow row = postMapper.findDetailById(postId, loginUserId);
+
+    assertThat(row).isNotNull();
+    assertThat(row.postId()).isEqualTo(postId);
+    assertThat(row.userId()).isEqualTo(authorId);
+    assertThat(row.nickname()).startsWith("author-");
+    assertThat(row.content()).isEqualTo("detail content");
+    assertThat(row.likeCount()).isEqualTo(1L);
+    assertThat(row.likedByMe()).isTrue();
+    assertThat(row.createdAt()).isEqualTo(LocalDateTime.of(2026, 5, 17, 9, 0));
+  }
+
+  @Test
+  void findDetailByIdReturnsNullWhenPostIsDeleted() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long postId = insertPost(authorId, "deleted detail");
+    softDeletePost(postId);
+
+    PostDetailRow row = postMapper.findDetailById(postId, loginUserId);
+
+    assertThat(row).isNull();
   }
 
   @Test
