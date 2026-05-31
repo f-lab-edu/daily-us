@@ -79,19 +79,27 @@ class PostMapperTest {
     Long postId = insertPost(userId, "liked post");
 
     assertThat(postMapper.existsActiveById(postId)).isTrue();
-    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isZero();
 
     postMapper.insertLike(postId, userId);
-    postMapper.incrementLikeCount(postId);
+    postMapper.applyLikeCountDelta(postId, 1L);
 
-    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isEqualTo(1);
     assertThat(countPostLikes(postId, userId)).isEqualTo(1);
     assertThat(findPostLikeCount(postId)).isEqualTo(1L);
 
     assertThat(postMapper.deleteLike(postId, userId)).isEqualTo(1);
-    postMapper.decrementLikeCount(postId);
+    postMapper.applyLikeCountDelta(postId, -1L);
 
-    assertThat(postMapper.countLikesByPostIdAndUserId(postId, userId)).isZero();
+    assertThat(countPostLikes(postId, userId)).isZero();
+    assertThat(findPostLikeCount(postId)).isZero();
+  }
+
+  @Test
+  void applyLikeCountDeltaDoesNotDropBelowZero() throws Exception {
+    Long userId = insertUser("post-like-floor-user@example.com", "post-like-floor-user");
+    Long postId = insertPost(userId, "post with zero likes");
+
+    postMapper.applyLikeCountDelta(postId, -1L);
+
     assertThat(findPostLikeCount(postId)).isZero();
   }
 
@@ -106,7 +114,7 @@ class PostMapperTest {
         "https://cdn.example.com/2.png"
     ));
     postMapper.insertLike(postId, loginUserId);
-    postMapper.incrementLikeCount(postId);
+    postMapper.applyLikeCountDelta(postId, 1L);
 
     PostDetailRow row = postMapper.findDetailById(postId, loginUserId);
 
@@ -414,9 +422,10 @@ class PostMapperTest {
                     nickname,
                     follower_count,
                     followee_count,
+                    intro,
                     profile_image,
                     deleted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
             new String[]{"user_id"}
         )) {
@@ -426,7 +435,8 @@ class PostMapperTest {
       statement.setLong(4, 0L);
       statement.setLong(5, 0L);
       statement.setString(6, null);
-      statement.setTimestamp(7, null);
+      statement.setString(7, null);
+      statement.setTimestamp(8, null);
       statement.executeUpdate();
 
       try (ResultSet generatedKeys = statement.getGeneratedKeys()) {

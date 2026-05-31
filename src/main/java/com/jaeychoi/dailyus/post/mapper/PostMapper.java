@@ -17,15 +17,11 @@ public interface PostMapper {
 
   boolean existsActiveById(Long postId);
 
-  int countLikesByPostIdAndUserId(Long postId, Long userId);
-
   void insertLike(Long postId, Long userId);
 
   int deleteLike(Long postId, Long userId);
 
-  void incrementLikeCount(Long postId);
-
-  void decrementLikeCount(Long postId);
+  void applyLikeCountDelta(Long postId, Long delta);
 
   Long findLikeCountByPostId(Long postId);
 
