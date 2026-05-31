@@ -1,6 +1,7 @@
 package com.jaeychoi.dailyus.post.mapper;
 
 import com.jaeychoi.dailyus.post.domain.Post;
+import com.jaeychoi.dailyus.post.dto.PostDetailRow;
 import com.jaeychoi.dailyus.post.dto.PostFeedRow;
 import com.jaeychoi.dailyus.post.dto.PostImageRow;
 import java.time.LocalDateTime;
@@ -37,6 +38,8 @@ public interface PostMapper {
   int deletePostLikesByPostId(Long postId);
 
   int deleteHashtagsByPostId(Long postId);
+
+  PostDetailRow findDetailById(Long postId, Long userId);
 
   boolean existsFeedPosts(Long userId);
 
