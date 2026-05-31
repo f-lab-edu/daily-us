@@ -309,13 +309,6 @@
           AND deleted_at IS NULL
     </update>
 
-    <update id="deleteImagesByPostId">
-        UPDATE post_images
-        SET deleted_at = CURRENT_TIMESTAMP
-        WHERE post_id = #{postId}
-          AND deleted_at IS NULL
-    </update>
-
     <select id="existsActiveById" resultType="boolean">
         SELECT EXISTS(
             SELECT 1

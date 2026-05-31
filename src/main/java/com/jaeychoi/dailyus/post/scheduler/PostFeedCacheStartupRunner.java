@@ -3,16 +3,17 @@ package com.jaeychoi.dailyus.post.scheduler;
 import com.jaeychoi.dailyus.common.app.FeedCacheWarmupProperties;
 import com.jaeychoi.dailyus.post.service.PostFeedCacheService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class PostFeedCacheStartupRunner {
 
+  private static final Logger log = LoggerFactory.getLogger(PostFeedCacheStartupRunner.class);
   private static final long START_USER_ID = 1L;
   private static final long END_USER_ID = 100L;
 

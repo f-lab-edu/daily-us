@@ -77,13 +77,13 @@ public class UserProfileService {
   private UserProfileResponse toMyProfileResponse(User user) {
     return new UserProfileResponse(
         user.getUserId(),
-        user.getEmail(),
         user.getNickname(),
         user.getIntro(),
         user.getProfileImage(),
         user.getFollowerCount(),
         user.getFolloweeCount(),
-        postMapper.countActiveByUserId(user.getUserId())
+        postMapper.countActiveByUserId(user.getUserId()),
+        false
     );
   }
 

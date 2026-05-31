@@ -203,13 +203,13 @@ class UserControllerTest {
   void updateMyProfileReturnsOkResponse() throws Exception {
     UserProfileResponse response = new UserProfileResponse(
         1L,
-        "user@example.com",
         "dailyus-new",
         "updated intro",
         "https://cdn.example.com/profile.png",
         3L,
         7L,
-        5L
+        5L,
+        false
     );
     when(userProfileService.updateProfile(
         1L,
