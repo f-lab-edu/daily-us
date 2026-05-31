@@ -39,6 +39,7 @@ class CommentGetRepliesTest {
         3L,
         true,
         LocalDateTime.of(2026, 4, 6, 10, 30),
+        false,
         parentCommentId
     );
     CommentRow olderReply = new CommentRow(
@@ -50,6 +51,7 @@ class CommentGetRepliesTest {
         1L,
         false,
         LocalDateTime.of(2026, 4, 6, 10, 0),
+        false,
         parentCommentId
     );
     CommentRow nextReply = new CommentRow(
@@ -61,6 +63,7 @@ class CommentGetRepliesTest {
         0L,
         false,
         LocalDateTime.of(2026, 4, 6, 9, 30),
+        false,
         parentCommentId
     );
 

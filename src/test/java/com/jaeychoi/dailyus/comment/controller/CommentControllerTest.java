@@ -38,6 +38,7 @@ class CommentControllerTest {
 
   @Mock
   private CommentGetService commentGetService;
+  @Mock
   private CommentUpdateService commentUpdateService;
 
   private MockMvc mockMvc;
@@ -48,7 +49,8 @@ class CommentControllerTest {
     LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
     validator.afterPropertiesSet();
 
-    mockMvc = MockMvcBuilders.standaloneSetup(new CommentController(commentUpdateService))
+    mockMvc = MockMvcBuilders.standaloneSetup(
+            new CommentController(commentUpdateService, commentGetService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
@@ -69,6 +71,7 @@ class CommentControllerTest {
             1L,
             false,
             LocalDateTime.of(2026, 4, 6, 10, 30),
+            false,
             101L,
             List.of()
         )),
@@ -77,9 +80,6 @@ class CommentControllerTest {
         true,
         3L
     );
-    when(commentUpdateService.update(eq(1L), eq(10L), any(CommentUpdateRequest.class)))
-        .thenReturn(response);
-
     when(commentGetService.getReplies(
         101L,
         1L,
@@ -108,8 +108,7 @@ class CommentControllerTest {
     CommentUpdateResponse response = new CommentUpdateResponse(
         10L,
         "updated comment",
-        true,
-        LocalDateTime.of(2026, 5, 18, 12, 0)
+        true
     );
     when(commentUpdateService.update(eq(1L), eq(10L), any(CommentUpdateRequest.class)))
         .thenReturn(response);
@@ -123,8 +122,7 @@ class CommentControllerTest {
         .andExpect(jsonPath("$.code").value("OK"))
         .andExpect(jsonPath("$.data.commentId").value(10L))
         .andExpect(jsonPath("$.data.content").value("updated comment"))
-        .andExpect(jsonPath("$.data.edited").value(true))
-        .andExpect(jsonPath("$.data.updatedAt").value("2026-05-18T12:00:00"));
+        .andExpect(jsonPath("$.data.edited").value(true));
   }
 
   @Test

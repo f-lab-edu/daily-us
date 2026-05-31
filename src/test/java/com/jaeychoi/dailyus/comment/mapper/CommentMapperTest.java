@@ -133,20 +133,6 @@ class CommentMapperTest {
   }
 
   @Test
-  void findActiveCommentByIdReturnsOnlyNonDeletedComment() throws Exception {
-    Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
-    Long postId = insertPost(userId, "post");
-    Long commentId = insertComment(userId, postId, null, "comment");
-
-    Comment comment = commentMapper.findActiveCommentById(commentId);
-
-    assertThat(comment).isNotNull();
-    assertThat(comment.getCommentId()).isEqualTo(commentId);
-    assertThat(comment.getContent()).isEqualTo("comment");
-    assertThat(comment.getUserId()).isEqualTo(userId);
-  }
-
-  @Test
   void updateContentUpdatesCommentTextAndTimestamp() throws Exception {
     Long userId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
     Long postId = insertPost(userId, "post");

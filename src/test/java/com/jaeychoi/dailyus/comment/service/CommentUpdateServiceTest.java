@@ -55,7 +55,6 @@ class CommentUpdateServiceTest {
     assertThat(response.commentId()).isEqualTo(10L);
     assertThat(response.content()).isEqualTo("new");
     assertThat(response.edited()).isTrue();
-    assertThat(response.updatedAt()).isEqualTo(LocalDateTime.of(2026, 5, 18, 12, 0));
   }
 
   @Test

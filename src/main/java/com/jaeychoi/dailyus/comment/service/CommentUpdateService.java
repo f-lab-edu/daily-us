@@ -30,9 +30,8 @@ public class CommentUpdateService {
 
     return new CommentUpdateResponse(
         comment.getCommentId(),
-        comment.getContent(),
-        true,
-        comment.getUpdatedAt()
+        request.content(),
+        true
     );
   }
 }
