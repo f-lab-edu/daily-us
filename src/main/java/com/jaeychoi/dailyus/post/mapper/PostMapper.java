@@ -27,6 +27,18 @@ public interface PostMapper {
 
   Post findById(Long postId);
 
+  int delete(Long postId, Long userId);
+
+  int deleteImagesByPostId(Long postId);
+
+  int deleteCommentsByPostId(Long postId);
+
+  int deleteCommentLikesByPostId(Long postId);
+
+  int deletePostLikesByPostId(Long postId);
+
+  int deleteHashtagsByPostId(Long postId);
+
   PostDetailRow findDetailById(Long postId, Long userId);
 
   boolean existsFeedPosts(Long userId);

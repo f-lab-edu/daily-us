@@ -224,6 +224,50 @@
           AND deleted_at IS NULL
     </select>
 
+    <update id="delete">
+        UPDATE posts
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE post_id = #{postId}
+          AND user_id = #{userId}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="deleteImagesByPostId">
+        UPDATE post_images
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE post_id = #{postId}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="deleteCommentsByPostId">
+        UPDATE comments
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE post_id = #{postId}
+          AND deleted_at IS NULL
+    </update>
+
+    <delete id="deleteCommentLikesByPostId">
+        DELETE
+        FROM comment_likes
+        WHERE comment_id IN (
+            SELECT comment_id
+            FROM comments
+            WHERE post_id = #{postId}
+        )
+    </delete>
+
+    <delete id="deletePostLikesByPostId">
+        DELETE
+        FROM post_likes
+        WHERE post_id = #{postId}
+    </delete>
+
+    <delete id="deleteHashtagsByPostId">
+        DELETE
+        FROM hashtag_posts
+        WHERE post_id = #{postId}
+    </delete>
+
     <select id="findDetailById" resultMap="postDetailRowResultMap">
         SELECT p.post_id,
                u.user_id,

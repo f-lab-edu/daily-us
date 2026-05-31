@@ -124,6 +124,20 @@ public class PostFeedRepository {
     );
   }
 
+  public void removePostIdFromFeeds(List<Long> userIds, Long postId) {
+    if (userIds == null || userIds.isEmpty() || postId == null) {
+      return;
+    }
+
+    String member = String.valueOf(postId);
+    for (Long userId : userIds) {
+      if (userId == null) {
+        continue;
+      }
+      redisTemplate.opsForZSet().remove(buildKey(userId), member);
+    }
+  }
+
   private String buildKey(Long userId) {
     return KEY_PREFIX + userId;
   }
