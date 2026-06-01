@@ -12,6 +12,7 @@ public enum ErrorCode {
       "You do not have permission to access this resource."),
   INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_005",
       "Refresh token is invalid or expired."),
+  INVALID_INPUT(HttpStatus.BAD_REQUEST, "INVALID_INPUT", "Invalid input."),
   GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "GRP_001", "Group not found."),
   GROUP_ALREADY_JOINED(HttpStatus.CONFLICT, "GRP_002", "Group is already in use."),
   GROUP_MEMBER_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "GRP_003", "Group is full."),
