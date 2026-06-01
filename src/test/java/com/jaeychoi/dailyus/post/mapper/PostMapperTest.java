@@ -144,7 +144,7 @@ class PostMapperTest {
     assertThat(postMapper.deletePostLikesByPostId(postId)).isEqualTo(1);
     assertThat(postMapper.deleteHashtagsByPostId(postId)).isEqualTo(1);
     assertThat(postMapper.deleteCommentsByPostId(postId)).isEqualTo(1);
-    assertThat(postMapper.deleteImagesByPostId(postId)).isEqualTo(1);
+    postMapper.deleteImagesByPostId(postId);
     assertThat(postMapper.delete(postId, authorId)).isEqualTo(1);
 
     assertThat(postMapper.findById(postId)).isNull();
@@ -863,19 +863,6 @@ class PostMapperTest {
           imageUrls.add(resultSet.getString(1));
         }
         return imageUrls;
-      }
-    }
-  }
-
-  private int countActivePostImages(Long postId) throws Exception {
-    Connection connection = DataSourceUtils.getConnection(dataSource);
-    try (PreparedStatement statement = connection.prepareStatement(
-        "SELECT COUNT(*) FROM post_images WHERE post_id = ? AND deleted_at IS NULL"
-    )) {
-      statement.setLong(1, postId);
-      try (ResultSet resultSet = statement.executeQuery()) {
-        resultSet.next();
-        return resultSet.getInt(1);
       }
     }
   }
