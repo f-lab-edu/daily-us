@@ -243,6 +243,42 @@ class GroupMapperTest {
   }
 
   @Test
+  void deleteGroupSoftDeletesGroup() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    groupMapper.insert(group);
+
+    groupMapper.deleteGroup(group.getGroupId());
+
+    assertThat(groupMapper.findActiveById(group.getGroupId())).isNull();
+    assertThat(findDeletedAt(group.getGroupId())).isNotNull();
+  }
+
+  @Test
+  void deleteAllMembersRemovesGroupMemberships() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Long memberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
+    Group group = Group.builder()
+        .name("daily-us")
+        .intro("group intro")
+        .groupImage("https://example.com/group.png")
+        .ownerId(ownerId)
+        .build();
+    groupMapper.insert(group);
+    groupMapper.insertMember(group.getGroupId(), ownerId);
+    groupMapper.insertMember(group.getGroupId(), memberId);
+
+    groupMapper.deleteAllMembers(group.getGroupId());
+
+    assertThat(countGroupMembers(group.getGroupId())).isEqualTo(0);
+  }
+
+  @Test
   void findGroupListReturnsActiveGroupsByDescendingCursor() {
     Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
     Group firstGroup = insertGroup(ownerId, "group-1", "https://example.com/1.png");
@@ -530,12 +566,30 @@ class GroupMapperTest {
     );
   }
 
+  private LocalDateTime findDeletedAt(Long groupId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT deleted_at FROM user_groups WHERE group_id = ?",
+        LocalDateTime.class,
+        groupId
+    );
+  }
+
   private int countGroupMember(Long groupId, Long userId) {
     Integer count = jdbcTemplate.queryForObject(
         "SELECT COUNT(*) FROM group_members WHERE group_id = ? AND user_id = ?",
         Integer.class,
         groupId,
         userId
+    );
+    assertThat(count).isNotNull();
+    return count;
+  }
+
+  private int countGroupMembers(Long groupId) {
+    Integer count = jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM group_members WHERE group_id = ?",
+        Integer.class,
+        groupId
     );
     assertThat(count).isNotNull();
     return count;
