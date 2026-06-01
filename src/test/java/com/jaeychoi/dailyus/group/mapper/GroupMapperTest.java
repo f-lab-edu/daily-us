@@ -163,6 +163,46 @@ class GroupMapperTest {
   }
 
   @Test
+  void updateGroupUpdatesEditableFields() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Group group = insertGroup(ownerId, "daily-us", "https://example.com/1.png");
+
+    group.setName("updated-name");
+    group.setIntro("updated intro");
+    group.setGroupImage("https://example.com/updated.png");
+
+    groupMapper.update(group);
+
+    Group found = groupMapper.findActiveById(group.getGroupId());
+    assertThat(found.getName()).isEqualTo("updated-name");
+    assertThat(found.getIntro()).isEqualTo("updated intro");
+    assertThat(found.getGroupImage()).isEqualTo("https://example.com/updated.png");
+  }
+
+  @Test
+  void updateGroupUpdatesOnlyProvidedFields() {
+    Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
+    Group group = insertGroup(ownerId, "daily-us", "https://example.com/original.png");
+    group.setIntro("original intro");
+    jdbcTemplate.update(
+        "UPDATE user_groups SET intro = ? WHERE group_id = ?",
+        "original intro",
+        group.getGroupId()
+    );
+
+    group.setName(null);
+    group.setIntro("updated intro");
+    group.setGroupImage(null);
+
+    groupMapper.update(group);
+
+    Group found = groupMapper.findActiveById(group.getGroupId());
+    assertThat(found.getName()).isEqualTo("daily-us");
+    assertThat(found.getIntro()).isEqualTo("updated intro");
+    assertThat(found.getGroupImage()).isEqualTo("https://example.com/original.png");
+  }
+
+  @Test
   void deleteMemberRemovesGroupMembership() {
     Long ownerId = insertUser(uniqueEmail("owner"), uniqueNickname("owner"));
     Long memberId = insertUser(uniqueEmail("member"), uniqueNickname("member"));
