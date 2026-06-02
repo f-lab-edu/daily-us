@@ -43,7 +43,10 @@ public enum ErrorCode {
   COMMENT_PARENT_MISMATCH(HttpStatus.BAD_REQUEST, "CMT_003",
       "Parent comment does not belong to the post."),
   COMMENT_REPLY_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "CMT_004",
-      "Replies can only be created for top-level comments.");
+      "Replies can only be created for top-level comments."),
+  COMMENT_LIKE_ALREADY_EXISTS(HttpStatus.CONFLICT, "CMT_005",
+      "Comment like already exists."),
+  COMMENT_LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "CMT_006", "Comment like not found.");
 
   private final HttpStatus status;
   private final String code;
