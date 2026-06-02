@@ -27,6 +27,14 @@ public interface CommentMapper {
 
   int updateContent(Long commentId, String content);
 
+  void insertLike(Long commentId, Long userId);
+
+  int deleteLike(Long commentId, Long userId);
+
+  int applyLikeCountDelta(Long commentId, Long delta);
+
+  Long findLikeCountByCommentId(Long commentId);
+
   int deleteCommentLikes(Long commentId, boolean includeReplies);
 
   int delete(Long commentId, boolean includeReplies);

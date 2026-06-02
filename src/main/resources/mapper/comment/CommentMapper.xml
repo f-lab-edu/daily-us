@@ -191,6 +191,36 @@
       AND deleted_at IS NULL
   </update>
 
+  <insert id="insertLike">
+    INSERT INTO comment_likes (
+      comment_id,
+      user_id
+    ) VALUES (
+      #{commentId},
+      #{userId}
+    )
+  </insert>
+
+  <delete id="deleteLike">
+    DELETE FROM comment_likes
+    WHERE comment_id = #{commentId}
+      AND user_id = #{userId}
+  </delete>
+
+  <update id="applyLikeCountDelta">
+    UPDATE comments
+    SET like_count = GREATEST(like_count + #{delta}, 0)
+    WHERE comment_id = #{commentId}
+      AND deleted_at IS NULL
+  </update>
+
+  <select id="findLikeCountByCommentId" resultType="java.lang.Long">
+    SELECT like_count
+    FROM comments
+    WHERE comment_id = #{commentId}
+      AND deleted_at IS NULL
+  </select>
+
   <delete id="deleteCommentLikes">
     DELETE FROM comment_likes
     WHERE comment_id = #{param1}
