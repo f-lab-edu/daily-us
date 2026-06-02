@@ -151,6 +151,38 @@ class CommentMapperTest {
   }
 
   @Test
+  void commentLikeQueriesInsertDeleteAndUpdateCount() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long likerId = insertUser(uniqueEmail("liker"), uniqueNickname("liker"));
+    Long postId = insertPost(authorId, "post");
+    Long commentId = insertComment(authorId, postId, null, "comment");
+
+    commentMapper.insertLike(commentId, likerId);
+    commentMapper.applyLikeCountDelta(commentId, 1L);
+
+    assertThat(countCommentLikes(commentId)).isEqualTo(1);
+    assertThat(readLikeCount(commentId)).isEqualTo(1L);
+    assertThat(commentMapper.findLikeCountByCommentId(commentId)).isEqualTo(1L);
+
+    assertThat(commentMapper.deleteLike(commentId, likerId)).isEqualTo(1);
+    commentMapper.applyLikeCountDelta(commentId, -1L);
+
+    assertThat(countCommentLikes(commentId)).isZero();
+    assertThat(readLikeCount(commentId)).isZero();
+  }
+
+  @Test
+  void applyLikeCountDeltaDoesNotDropBelowZero() throws Exception {
+    Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
+    Long postId = insertPost(authorId, "post");
+    Long commentId = insertComment(authorId, postId, null, "comment");
+
+    commentMapper.applyLikeCountDelta(commentId, -1L);
+
+    assertThat(readLikeCount(commentId)).isZero();
+  }
+
+  @Test
   void findRepliesReturnsRepliesByCursorOrder() throws Exception {
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
     Long authorId = insertUser(uniqueEmail("author"), uniqueNickname("author"));
