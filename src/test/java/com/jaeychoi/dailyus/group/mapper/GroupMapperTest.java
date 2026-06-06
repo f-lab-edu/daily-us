@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,21 @@ class GroupMapperTest {
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
+
+  @BeforeEach
+  void setUp() {
+    jdbcTemplate.update("DELETE FROM comment_likes");
+    jdbcTemplate.update("DELETE FROM comments");
+    jdbcTemplate.update("DELETE FROM post_likes");
+    jdbcTemplate.update("DELETE FROM post_images");
+    jdbcTemplate.update("DELETE FROM hashtag_posts");
+    jdbcTemplate.update("DELETE FROM hashtag");
+    jdbcTemplate.update("DELETE FROM posts");
+    jdbcTemplate.update("DELETE FROM group_members");
+    jdbcTemplate.update("DELETE FROM user_follow");
+    jdbcTemplate.update("DELETE FROM user_groups");
+    jdbcTemplate.update("DELETE FROM users");
+  }
 
   @Test
   void insertPersistsGroupAndSetsGeneratedKey() {
