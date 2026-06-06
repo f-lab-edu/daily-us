@@ -1,12 +1,10 @@
 package com.jaeychoi.dailyus.aggregate.service;
 
 import com.jaeychoi.dailyus.aggregate.dto.AggregateReconciliationResult;
-import com.jaeychoi.dailyus.aggregate.mapper.AggregateReconciliationMapper;
+import com.jaeychoi.dailyus.aggregate.internal.AggregateReconciliationTxExecutor;
 import com.jaeychoi.dailyus.post.service.PostLikeCountFlushService;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -18,66 +16,55 @@ public class AggregateReconciliationService {
   private static final String FOLLOWEE_TARGET = "users.followee_count";
   private static final String MEMBER_TARGET = "user_groups.member_count";
 
-  private final AggregateReconciliationMapper aggregateReconciliationMapper;
   private final PostLikeCountFlushService postLikeCountFlushService;
+  private final AggregateReconciliationTxExecutor aggregateReconciliationTxExecutor;
 
-  @Transactional
   public AggregateReconciliationResult reconcilePostLikeCounts(int batchSize) {
     validateBatchSize(batchSize);
     postLikeCountFlushService.flushAllDirty();
     return reconcile(
         POST_LIKE_TARGET,
         batchSize,
-        aggregateReconciliationMapper::findPostIdsWithLikeCountMismatch,
-        aggregateReconciliationMapper::reconcilePostLikeCount
+        aggregateReconciliationTxExecutor::reconcilePostLikeBatch
     );
   }
 
-  @Transactional
   public AggregateReconciliationResult reconcileCommentLikeCounts(int batchSize) {
     return reconcile(
         COMMENT_LIKE_TARGET,
         batchSize,
-        aggregateReconciliationMapper::findCommentIdsWithLikeCountMismatch,
-        aggregateReconciliationMapper::reconcileCommentLikeCount
+        aggregateReconciliationTxExecutor::reconcileCommentLikeBatch
     );
   }
 
-  @Transactional
   public AggregateReconciliationResult reconcileFollowerCounts(int batchSize) {
     return reconcile(
         FOLLOWER_TARGET,
         batchSize,
-        aggregateReconciliationMapper::findUserIdsWithFollowerCountMismatch,
-        aggregateReconciliationMapper::reconcileFollowerCount
+        aggregateReconciliationTxExecutor::reconcileFollowerBatch
     );
   }
 
-  @Transactional
   public AggregateReconciliationResult reconcileFolloweeCounts(int batchSize) {
     return reconcile(
         FOLLOWEE_TARGET,
         batchSize,
-        aggregateReconciliationMapper::findUserIdsWithFolloweeCountMismatch,
-        aggregateReconciliationMapper::reconcileFolloweeCount
+        aggregateReconciliationTxExecutor::reconcileFolloweeBatch
     );
   }
 
-  @Transactional
   public AggregateReconciliationResult reconcileMemberCounts(int batchSize) {
     return reconcile(
         MEMBER_TARGET,
         batchSize,
-        aggregateReconciliationMapper::findGroupIdsWithMemberCountMismatch,
-        aggregateReconciliationMapper::reconcileMemberCount
+        aggregateReconciliationTxExecutor::reconcileMemberBatch
     );
   }
 
   private AggregateReconciliationResult reconcile(
       String target,
       int batchSize,
-      IdLookup idLookup,
-      Updater updater
+      BatchRunner batchRunner
   ) {
     validateBatchSize(batchSize);
 
@@ -85,15 +72,14 @@ public class AggregateReconciliationService {
     int updatedCount = 0;
 
     while (true) {
-      List<Long> ids = idLookup.findMismatchIds(batchSize);
-      if (ids.isEmpty()) {
+      AggregateReconciliationTxExecutor.BatchReconciliationResult batchResult =
+          batchRunner.run(batchSize);
+      if (batchResult.completed()) {
         return new AggregateReconciliationResult(target, batchCount, updatedCount);
       }
 
       batchCount++;
-      for (Long id : ids) {
-        updatedCount += updater.update(id);
-      }
+      updatedCount += batchResult.updatedCount();
     }
   }
 
@@ -104,14 +90,8 @@ public class AggregateReconciliationService {
   }
 
   @FunctionalInterface
-  private interface IdLookup {
+  private interface BatchRunner {
 
-    List<Long> findMismatchIds(int limit);
-  }
-
-  @FunctionalInterface
-  private interface Updater {
-
-    int update(Long id);
+    AggregateReconciliationTxExecutor.BatchReconciliationResult run(int batchSize);
   }
 }

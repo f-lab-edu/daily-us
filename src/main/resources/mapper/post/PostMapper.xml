@@ -261,6 +261,13 @@
         WHERE post_id = #{postId}
     </delete>
 
+    <update id="deleteImagesByPostId">
+        UPDATE post_images
+        SET deleted_at = CURRENT_TIMESTAMP
+        WHERE post_id = #{postId}
+          AND deleted_at IS NULL
+    </update>
+
     <select id="findDetailById" resultMap="postDetailRowResultMap">
         SELECT p.post_id,
                u.user_id,
