@@ -1,14 +1,11 @@
 package com.jaeychoi.dailyus.post.scheduler;
 
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.jaeychoi.dailyus.post.mapper.PostMapper;
-import com.jaeychoi.dailyus.post.repository.PostLikeRepository;
+import com.jaeychoi.dailyus.post.service.PostLikeCountFlushService;
 import java.lang.reflect.Field;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,51 +16,30 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class PostLikeCountFlushSchedulerTest {
 
   @Mock
-  private PostLikeRepository postLikeRepository;
-
-  @Mock
-  private PostMapper postMapper;
+  private PostLikeCountFlushService postLikeCountFlushService;
 
   @InjectMocks
   private PostLikeCountFlushScheduler postLikeCountFlushScheduler;
 
   @Test
-  void flushAppliesDrainedDeltasToPosts() throws Exception {
+  void flushRunsConfiguredBatch() throws Exception {
     setFlushBatchSize(2L);
-    when(postLikeRepository.popDirtyPostIds(2L)).thenReturn(List.of(10L));
-    when(postLikeRepository.drainDelta(10L)).thenReturn(3L);
+    when(postLikeCountFlushService.flushBatch(2L)).thenReturn(1);
 
     postLikeCountFlushScheduler.flush();
 
-    verify(postMapper).applyLikeCountDelta(10L, 3L);
+    verify(postLikeCountFlushService).flushBatch(2L);
   }
 
   @Test
-  void flushSkipsWhenDrainedDeltaIsZero() throws Exception {
+  void flushStillDelegatesWhenNothingWasFlushed() throws Exception {
     setFlushBatchSize(2L);
-    when(postLikeRepository.popDirtyPostIds(2L)).thenReturn(List.of(10L));
-    when(postLikeRepository.drainDelta(10L)).thenReturn(0L);
+    when(postLikeCountFlushService.flushBatch(2L)).thenReturn(0);
 
     postLikeCountFlushScheduler.flush();
 
-    verify(postMapper, never()).applyLikeCountDelta(10L, 0L);
-  }
-
-  @Test
-  void flushRestoresDeltaWhenDatabaseWriteFails() throws Exception {
-    setFlushBatchSize(2L);
-    when(postLikeRepository.popDirtyPostIds(2L)).thenReturn(List.of(10L));
-    when(postLikeRepository.drainDelta(10L)).thenReturn(3L);
-    doThrow(new RuntimeException("db failure"))
-        .when(postMapper).applyLikeCountDelta(10L, 3L);
-
-    try {
-      postLikeCountFlushScheduler.flush();
-    } catch (RuntimeException ignored) {
-      // expected
-    }
-
-    verify(postLikeRepository).addDelta(10L, 3L);
+    verify(postLikeCountFlushService).flushBatch(2L);
+    verify(postLikeCountFlushService, never()).flushAllDirty();
   }
 
   private void setFlushBatchSize(long flushBatchSize) throws Exception {

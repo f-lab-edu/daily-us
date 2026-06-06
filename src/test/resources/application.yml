@@ -24,3 +24,12 @@ app:
   kafka:
     topics:
       post-created: post.created
+  aggregate-reconciliation:
+    hot:
+      enabled: true
+      cron: 0 */5 * * * *
+      batch-size: 200
+    full:
+      enabled: true
+      cron: 0 0 4 * * *
+      batch-size: 1000

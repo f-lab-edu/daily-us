@@ -1,34 +1,42 @@
-package com.jaeychoi.dailyus.post.scheduler;
+package com.jaeychoi.dailyus.post.service;
 
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
 import com.jaeychoi.dailyus.post.repository.PostLikeRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 @Slf4j
-@Component
+@Service
 @RequiredArgsConstructor
-public class PostLikeCountFlushScheduler {
+public class PostLikeCountFlushService {
 
   private final PostLikeRepository postLikeRepository;
   private final PostMapper postMapper;
 
-  @Value("${app.like.flush-batch-size:100}")
-  private long flushBatchSize;
-
-  @Scheduled(fixedDelayString = "${app.like.flush-delay-ms:1000}")
-  public void flush() {
-    List<Long> postIds = postLikeRepository.popDirtyPostIds(flushBatchSize);
+  public int flushBatch(long batchSize) {
+    List<Long> postIds = postLikeRepository.popDirtyPostIds(batchSize);
+    int flushedCount = 0;
     for (Long postId : postIds) {
       flushPostLikeCount(postId);
+      flushedCount++;
+    }
+    return flushedCount;
+  }
+
+  public int flushAllDirty() {
+    int totalFlushedCount = 0;
+    while (true) {
+      int flushedCount = flushBatch(Long.MAX_VALUE);
+      if (flushedCount == 0) {
+        return totalFlushedCount;
+      }
+      totalFlushedCount += flushedCount;
     }
   }
 
-  private void flushPostLikeCount(Long postId) {
+  public void flushPostLikeCount(Long postId) {
     long delta = postLikeRepository.drainDelta(postId);
     if (delta == 0L) {
       return;

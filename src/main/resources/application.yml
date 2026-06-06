@@ -40,3 +40,12 @@ app:
   feed-cache:
     warmup:
       enabled: true
+  aggregate-reconciliation:
+    hot:
+      enabled: true
+      cron: 0 */5 * * * *
+      batch-size: 200
+    full:
+      enabled: true
+      cron: 0 0 4 * * *
+      batch-size: 1000
