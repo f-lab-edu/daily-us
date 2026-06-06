@@ -6,9 +6,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.jaeychoi.dailyus.aggregate.dto.AggregateReconciliationResult;
-import com.jaeychoi.dailyus.aggregate.mapper.AggregateReconciliationMapper;
+import com.jaeychoi.dailyus.aggregate.internal.AggregateReconciliationTxExecutor;
 import com.jaeychoi.dailyus.post.service.PostLikeCountFlushService;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,21 +18,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AggregateReconciliationServiceTest {
 
   @Mock
-  private AggregateReconciliationMapper aggregateReconciliationMapper;
+  private PostLikeCountFlushService postLikeCountFlushService;
 
   @Mock
-  private PostLikeCountFlushService postLikeCountFlushService;
+  private AggregateReconciliationTxExecutor aggregateReconciliationTxExecutor;
 
   @InjectMocks
   private AggregateReconciliationService aggregateReconciliationService;
 
   @Test
   void reconcilePostLikeCountsFlushesPendingDeltasBeforeReconciling() {
-    when(aggregateReconciliationMapper.findPostIdsWithLikeCountMismatch(2))
-        .thenReturn(List.of(10L, 20L))
-        .thenReturn(List.of());
-    when(aggregateReconciliationMapper.reconcilePostLikeCount(10L)).thenReturn(1);
-    when(aggregateReconciliationMapper.reconcilePostLikeCount(20L)).thenReturn(1);
+    when(aggregateReconciliationTxExecutor.reconcilePostLikeBatch(2))
+        .thenReturn(new AggregateReconciliationTxExecutor.BatchReconciliationResult(false, 2))
+        .thenReturn(new AggregateReconciliationTxExecutor.BatchReconciliationResult(true, 0));
 
     AggregateReconciliationResult result =
         aggregateReconciliationService.reconcilePostLikeCounts(2);
@@ -44,13 +41,26 @@ class AggregateReconciliationServiceTest {
 
   @Test
   void reconcileCommentLikeCountsReturnsZeroWhenNoMismatchExists() {
-    when(aggregateReconciliationMapper.findCommentIdsWithLikeCountMismatch(100))
-        .thenReturn(List.of());
+    when(aggregateReconciliationTxExecutor.reconcileCommentLikeBatch(100))
+        .thenReturn(new AggregateReconciliationTxExecutor.BatchReconciliationResult(true, 0));
 
     AggregateReconciliationResult result =
         aggregateReconciliationService.reconcileCommentLikeCounts(100);
 
     assertThat(result).isEqualTo(new AggregateReconciliationResult("comments.like_count", 0, 0));
+  }
+
+  @Test
+  void reconcileFollowerCountsAggregatesMultipleTransactionalBatches() {
+    when(aggregateReconciliationTxExecutor.reconcileFollowerBatch(100))
+        .thenReturn(new AggregateReconciliationTxExecutor.BatchReconciliationResult(false, 2))
+        .thenReturn(new AggregateReconciliationTxExecutor.BatchReconciliationResult(false, 1))
+        .thenReturn(new AggregateReconciliationTxExecutor.BatchReconciliationResult(true, 0));
+
+    AggregateReconciliationResult result =
+        aggregateReconciliationService.reconcileFollowerCounts(100);
+
+    assertThat(result).isEqualTo(new AggregateReconciliationResult("users.follower_count", 2, 3));
   }
 
   @Test
