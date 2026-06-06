@@ -174,6 +174,45 @@ class PostFeedFanoutApiIntegrationTest {
   }
 
   @Test
+  void deletedPostEventuallyDisappearsFromFollowerFeed() throws Exception {
+    TestUser author = insertUser("author");
+    TestUser follower = insertUser("follower");
+    insertFollow(follower.userId(), author.userId());
+
+    Long oldPostId = insertPost(author.userId(), "old-post");
+    updatePostCreatedAt(oldPostId, LocalDateTime.of(2026, 4, 6, 8, 0));
+
+    JsonNode warmFeed = getFeed(follower.accessToken(), 10L, null, null);
+    assertThat(extractPostIds(warmFeed)).containsExactly(oldPostId);
+
+    JsonNode createdPost = createPost(
+        author.accessToken(),
+        """
+            {
+              "imageUrls": ["https://cdn.example.com/deleted-post.png"],
+              "content": "temporary fanout post #Delete"
+            }
+            """
+    );
+    Long createdPostId = createdPost.path("postId").asLong();
+
+    JsonNode feedWithCreatedPost = awaitFeedContainsPost(follower.accessToken(), 10L, createdPostId);
+    assertThat(extractPostIds(feedWithCreatedPost)).contains(createdPostId, oldPostId);
+
+    softDeletePost(createdPostId);
+
+    Awaitility.await()
+        .atMost(FANOUT_SLA)
+        .pollInterval(Duration.ofMillis(200))
+        .untilAsserted(() -> {
+          JsonNode latestFeed = getFeed(follower.accessToken(), 10L, null, null);
+          assertThat(extractPostIds(latestFeed))
+              .containsExactly(oldPostId)
+              .doesNotContain(createdPostId);
+        });
+  }
+
+  @Test
   void createPostDoesNotAppearInPersonalizedFeedOfUnrelatedUser() throws Exception {
     TestUser author = insertUser("author");
     TestUser unrelatedReader = insertUser("unrelated-reader");
@@ -571,6 +610,16 @@ class PostFeedFanoutApiIntegrationTest {
         )) {
       statement.setTimestamp(1, Timestamp.valueOf(createdAt));
       statement.setLong(2, postId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void softDeletePost(Long postId) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE posts SET deleted_at = CURRENT_TIMESTAMP WHERE post_id = ?"
+        )) {
+      statement.setLong(1, postId);
       statement.executeUpdate();
     }
   }
