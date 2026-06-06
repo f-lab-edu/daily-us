@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -25,6 +26,8 @@ import com.jaeychoi.dailyus.group.dto.GroupListResponse;
 import com.jaeychoi.dailyus.group.dto.GroupMemberRankRow;
 import com.jaeychoi.dailyus.group.dto.GroupMemberResponse;
 import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
+import com.jaeychoi.dailyus.group.dto.GroupUpdateRequest;
+import com.jaeychoi.dailyus.group.dto.GroupUpdateResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
 import com.jaeychoi.dailyus.group.service.GroupDetailService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
@@ -32,6 +35,7 @@ import com.jaeychoi.dailyus.group.service.GroupLeaveService;
 import com.jaeychoi.dailyus.group.service.GroupListService;
 import com.jaeychoi.dailyus.group.service.GroupMembersService;
 import com.jaeychoi.dailyus.group.service.GroupRankService;
+import com.jaeychoi.dailyus.group.service.GroupUpdateService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,6 +74,9 @@ class GroupControllerTest {
   @Mock
   private GroupMembersService groupMembersService;
 
+  @Mock
+  private GroupUpdateService groupUpdateService;
+
   private MockMvc mockMvc;
 
   private ObjectMapper objectMapper;
@@ -83,12 +90,165 @@ class GroupControllerTest {
     mockMvc = MockMvcBuilders.standaloneSetup(
             new GroupController(groupCreateService, groupDetailService, groupJoinService,
                 groupLeaveService,
-                groupListService, groupRankService, groupMembersService))
+                groupListService, groupRankService, groupMembersService, groupUpdateService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
         .build();
+  }
+
+  @Test
+  void updateGroupReturnsOkResponse() throws Exception {
+    GroupUpdateRequest request = new GroupUpdateRequest(
+        "daily-us",
+        "updated intro",
+        "https://example.com/group.png"
+    );
+    GroupUpdateResponse response = new GroupUpdateResponse(
+        1L,
+        request.name(),
+        request.intro(),
+        request.groupImage(),
+        2L,
+        10
+    );
+    when(groupUpdateService.update(1L, 2L, request)).thenReturn(response);
+
+    mockMvc.perform(patch("/api/v1/groups/1")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.groupId").value(1L))
+        .andExpect(jsonPath("$.data.name").value("daily-us"))
+        .andExpect(jsonPath("$.data.memberCount").value(10));
+  }
+
+  @Test
+  void updateGroupReturnsOkResponseWhenOnlyIntroChanges() throws Exception {
+    GroupUpdateRequest request = new GroupUpdateRequest(
+        null,
+        "updated intro",
+        null
+    );
+    GroupUpdateResponse response = new GroupUpdateResponse(
+        1L,
+        "daily-us",
+        request.intro(),
+        "https://example.com/group.png",
+        2L,
+        10
+    );
+    when(groupUpdateService.update(1L, 2L, request)).thenReturn(response);
+
+    mockMvc.perform(patch("/api/v1/groups/1")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.name").value("daily-us"))
+        .andExpect(jsonPath("$.data.intro").value("updated intro"));
+  }
+
+  @Test
+  void updateGroupReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    GroupUpdateRequest request = new GroupUpdateRequest(
+        "daily-us",
+        "updated intro",
+        "https://example.com/group.png"
+    );
+
+    mockMvc.perform(patch("/api/v1/groups/1")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void updateGroupReturnsBadRequestWhenRequestBodyValidationFails() throws Exception {
+    GroupUpdateRequest request = new GroupUpdateRequest("", null, null);
+
+    mockMvc.perform(patch("/api/v1/groups/1")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+        .andExpect(jsonPath("$.message").value("Invalid input."))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void updateGroupReturnsBadRequestWhenNoPatchFieldProvided() throws Exception {
+    GroupUpdateRequest request = new GroupUpdateRequest(null, null, null);
+    when(groupUpdateService.update(anyLong(), anyLong(), any(GroupUpdateRequest.class)))
+        .thenThrow(new BaseException(ErrorCode.INVALID_INPUT));
+
+    mockMvc.perform(patch("/api/v1/groups/1")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+        .andExpect(jsonPath("$.message").value("Invalid input."))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void updateGroupReturnsForbiddenWhenUserIsNotOwner() throws Exception {
+    GroupUpdateRequest request = new GroupUpdateRequest(
+        "daily-us",
+        "updated intro",
+        "https://example.com/group.png"
+    );
+    when(groupUpdateService.update(anyLong(), anyLong(), any(GroupUpdateRequest.class)))
+        .thenThrow(new BaseException(ErrorCode.FORBIDDEN));
+
+    mockMvc.perform(patch("/api/v1/groups/1")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.FORBIDDEN.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void updateGroupReturnsNotFoundWhenGroupDoesNotExist() throws Exception {
+    GroupUpdateRequest request = new GroupUpdateRequest(
+        "daily-us",
+        "updated intro",
+        "https://example.com/group.png"
+    );
+    when(groupUpdateService.update(anyLong(), anyLong(), any(GroupUpdateRequest.class)))
+        .thenThrow(new BaseException(ErrorCode.GROUP_NOT_FOUND));
+
+    mockMvc.perform(patch("/api/v1/groups/1")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester"))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value(ErrorCode.GROUP_NOT_FOUND.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_NOT_FOUND.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
   }
 
   @Test

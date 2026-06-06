@@ -31,8 +31,6 @@ public interface PostMapper {
 
   int delete(Long postId, Long userId);
 
-  int deleteImagesByPostId(Long postId);
-
   int deleteCommentsByPostId(Long postId);
 
   int deleteCommentLikesByPostId(Long postId);
