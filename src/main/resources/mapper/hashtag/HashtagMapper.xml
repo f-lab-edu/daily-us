@@ -42,4 +42,10 @@
         </foreach>
     </insert>
 
+    <delete id="deletePostHashtags">
+        DELETE
+        FROM hashtag_posts
+        WHERE post_id = #{postId}
+    </delete>
+
 </mapper>

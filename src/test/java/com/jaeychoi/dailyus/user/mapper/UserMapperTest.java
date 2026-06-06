@@ -24,7 +24,6 @@ class UserMapperTest {
 
   @Test
   void existsActiveByEmailAndNicknameReturnsTrueOnlyForActiveUsers() throws Exception {
-    // given
     String activeEmail = uniqueEmail("active");
     String activeNickname = uniqueNickname("active-user");
     String deletedEmail = uniqueEmail("deleted");
@@ -32,13 +31,11 @@ class UserMapperTest {
     insertUser(activeEmail, activeNickname, null);
     insertUser(deletedEmail, deletedNickname, LocalDateTime.of(2026, 3, 26, 10, 0));
 
-    // when
     boolean activeEmailExists = userMapper.existsActiveByEmail(activeEmail);
     boolean activeNicknameExists = userMapper.existsActiveByNickname(activeNickname);
     boolean deletedEmailExists = userMapper.existsActiveByEmail(deletedEmail);
     boolean deletedNicknameExists = userMapper.existsActiveByNickname(deletedNickname);
 
-    // then
     assertThat(activeEmailExists).isTrue();
     assertThat(activeNicknameExists).isTrue();
     assertThat(deletedEmailExists).isFalse();
@@ -47,7 +44,6 @@ class UserMapperTest {
 
   @Test
   void existsActiveByIdReturnsTrueOnlyForActiveUsers() throws Exception {
-    // given
     Long activeUserId = insertUser(uniqueEmail("active-id"), uniqueNickname("active-id-user"), null);
     Long deletedUserId = insertUser(
         uniqueEmail("deleted-id"),
@@ -55,18 +51,15 @@ class UserMapperTest {
         LocalDateTime.of(2026, 3, 26, 10, 0)
     );
 
-    // when
     boolean activeExists = userMapper.existsActiveById(activeUserId);
     boolean deletedExists = userMapper.existsActiveById(deletedUserId);
 
-    // then
     assertThat(activeExists).isTrue();
     assertThat(deletedExists).isFalse();
   }
 
   @Test
   void insertPersistsUserAndSetsGeneratedKey() {
-    // given
     String email = uniqueEmail("new");
     String nickname = uniqueNickname("new-user");
     User user = User.builder()
@@ -75,13 +68,30 @@ class UserMapperTest {
         .nickname(nickname)
         .build();
 
-    // when
     userMapper.insert(user);
 
-    // then
     assertThat(user.getUserId()).isNotNull();
     assertThat(userMapper.existsActiveByEmail(email)).isTrue();
     assertThat(userMapper.existsActiveByNickname(nickname)).isTrue();
+  }
+
+  @Test
+  void updateProfileUpdatesNicknameIntroAndProfileImage() throws Exception {
+    Long userId = insertUser(uniqueEmail("profile"), uniqueNickname("profile-user"), null);
+
+    User user = userMapper.findActiveById(userId);
+    String updatedNickname = uniqueNickname("updated-user");
+    user.setNickname(updatedNickname);
+    user.setIntro("updated intro");
+    user.setProfileImage("https://cdn.example.com/profile.png");
+
+    int updatedRows = userMapper.updateProfile(user);
+    User updatedUser = userMapper.findActiveById(userId);
+
+    assertThat(updatedRows).isEqualTo(1);
+    assertThat(updatedUser.getNickname()).isEqualTo(updatedNickname);
+    assertThat(updatedUser.getIntro()).isEqualTo("updated intro");
+    assertThat(updatedUser.getProfileImage()).isEqualTo("https://cdn.example.com/profile.png");
   }
 
   private Long insertUser(String email, String nickname, LocalDateTime deletedAt) throws Exception {

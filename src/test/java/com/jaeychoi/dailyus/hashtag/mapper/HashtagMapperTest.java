@@ -69,6 +69,20 @@ class HashtagMapperTest {
     assertThat(countHashtagPost(postId, routineId)).isEqualTo(1);
   }
 
+  @Test
+  void deletePostHashtagsRemovesRelations() throws Exception {
+    Long userId = insertUser("writer-delete@example.com", "writer-delete");
+    Long postId = insertPost(userId, "post content");
+    Long morningId = insertHashtag("morning-delete");
+    Long routineId = insertHashtag("routine-delete");
+    hashtagMapper.insertPostHashtags(postId, List.of(morningId, routineId));
+
+    hashtagMapper.deletePostHashtags(postId);
+
+    assertThat(countHashtagPost(postId, morningId)).isZero();
+    assertThat(countHashtagPost(postId, routineId)).isZero();
+  }
+
   private Long insertUser(String email, String nickname) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(

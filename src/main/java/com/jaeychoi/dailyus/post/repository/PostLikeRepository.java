@@ -77,6 +77,15 @@ public class PostLikeRepository {
     return drained == null ? 0L : Long.parseLong(drained);
   }
 
+  public void clear(Long postId) {
+    if (postId == null) {
+      return;
+    }
+
+    redisTemplate.delete(buildDeltaKey(postId));
+    redisTemplate.opsForSet().remove(DIRTY_KEY, String.valueOf(postId));
+  }
+
   private String buildDeltaKey(Long postId) {
     return DELTA_KEY_PREFIX + postId;
   }
