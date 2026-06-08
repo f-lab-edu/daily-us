@@ -12,6 +12,7 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @MybatisTest
 class UserMapperTest {
@@ -21,6 +22,9 @@ class UserMapperTest {
 
   @Autowired
   private DataSource dataSource;
+
+  @Autowired
+  private JdbcTemplate jdbcTemplate;
 
   @Test
   void existsActiveByEmailAndNicknameReturnsTrueOnlyForActiveUsers() throws Exception {
@@ -94,6 +98,18 @@ class UserMapperTest {
     assertThat(updatedUser.getProfileImage()).isEqualTo("https://cdn.example.com/profile.png");
   }
 
+  @Test
+  void deleteSetsDeletedAtForActiveUser() throws Exception {
+    Long userId = insertUser(uniqueEmail("withdraw"), uniqueNickname("withdraw-user"), null);
+
+    int deletedRows = userMapper.delete(userId);
+    LocalDateTime deletedAt = findDeletedAtByUserId(userId);
+
+    assertThat(deletedRows).isEqualTo(1);
+    assertThat(userMapper.existsActiveById(userId)).isFalse();
+    assertThat(deletedAt).isNotNull();
+  }
+
   private Long insertUser(String email, String nickname, LocalDateTime deletedAt) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
@@ -126,6 +142,15 @@ class UserMapperTest {
         return generatedKeys.getLong(1);
       }
     }
+  }
+
+  private LocalDateTime findDeletedAtByUserId(Long userId) throws Exception {
+    Timestamp deletedAt = jdbcTemplate.queryForObject(
+        "SELECT deleted_at FROM users WHERE user_id = ?",
+        Timestamp.class,
+        userId
+    );
+    return deletedAt == null ? null : deletedAt.toLocalDateTime();
   }
 
   private String uniqueEmail(String prefix) {

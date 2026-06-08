@@ -121,6 +121,14 @@
         AND deleted_at IS NULL
     </update>
 
+    <update id="delete" parameterType="long">
+      UPDATE users
+      SET deleted_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = #{userId}
+        AND deleted_at IS NULL
+    </update>
+
     <insert id="insert"
             parameterType="com.jaeychoi.dailyus.user.domain.User"
             useGeneratedKeys="true"

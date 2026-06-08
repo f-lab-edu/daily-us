@@ -99,6 +99,10 @@ public class RefreshTokenRepository {
     return updated != null && updated == 1L;
   }
 
+  public void delete(Long userId) {
+    redisTemplate.delete(activeKey(userId));
+  }
+
   private String activeKey(Long userId) {
     return "auth:refresh:active:" + userId;
   }

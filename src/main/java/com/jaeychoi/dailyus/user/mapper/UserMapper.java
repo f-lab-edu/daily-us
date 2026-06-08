@@ -19,6 +19,8 @@ public interface UserMapper {
 
   int updateProfile(User user);
 
+  int delete(Long userId);
+
   void incrementFollowerCount(Long userId);
 
   void incrementFolloweeCount(Long userId);
