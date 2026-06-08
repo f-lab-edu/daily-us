@@ -23,7 +23,11 @@ public interface GroupMapper {
 
   void deleteMember(Long groupId, Long userId);
 
+  void deleteAllMembers(Long groupId);
+
   void decreaseMemberCount(Long groupId);
+
+  void deleteGroup(Long groupId);
 
   Group findActiveById(Long groupId);
 

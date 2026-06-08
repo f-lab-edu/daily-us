@@ -15,6 +15,7 @@ import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.dto.GroupUpdateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupUpdateResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
+import com.jaeychoi.dailyus.group.service.GroupDeleteService;
 import com.jaeychoi.dailyus.group.service.GroupDetailService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
 import com.jaeychoi.dailyus.group.service.GroupLeaveService;
@@ -46,6 +47,7 @@ public class GroupController {
 
   private final GroupCreateService groupCreateService;
   private final GroupDetailService groupDetailService;
+  private final GroupDeleteService groupDeleteService;
   private final GroupJoinService groupJoinService;
   private final GroupLeaveService groupLeaveService;
   private final GroupListService groupListService;
@@ -77,6 +79,14 @@ public class GroupController {
   @AuthRequired
   public ApiResponse<GroupDetailResponse> getGroupDetail(@PathVariable Long groupId) {
     return ApiResponse.success(groupDetailService.getDetail(groupId));
+  }
+
+  @DeleteMapping("/{groupId}")
+  @AuthRequired
+  public ApiResponse<Void> deleteGroup(@PathVariable Long groupId,
+      @AuthenticatedUser CurrentUser user) {
+    groupDeleteService.delete(groupId, user.userId());
+    return ApiResponse.success(null);
   }
 
   @PostMapping

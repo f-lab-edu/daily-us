@@ -110,12 +110,25 @@
       AND user_id = #{userId}
   </delete>
 
+  <delete id="deleteAllMembers">
+    DELETE
+    FROM group_members
+    WHERE group_id = #{groupId}
+  </delete>
+
   <update id="decreaseMemberCount" parameterType="long">
     UPDATE user_groups
     SET member_count = member_count - 1
     WHERE group_id = #{groupId}
       AND deleted_at IS NULL
       AND member_count > 0
+  </update>
+
+  <update id="deleteGroup" parameterType="long">
+    UPDATE user_groups
+    SET deleted_at = CURRENT_TIMESTAMP
+    WHERE group_id = #{groupId}
+      AND deleted_at IS NULL
   </update>
 
   <select id="findActiveById"
