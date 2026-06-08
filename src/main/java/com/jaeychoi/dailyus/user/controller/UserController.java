@@ -16,6 +16,7 @@ import com.jaeychoi.dailyus.user.service.UserFollowService;
 import com.jaeychoi.dailyus.user.service.UserMyGroupService;
 import com.jaeychoi.dailyus.user.service.UserPostService;
 import com.jaeychoi.dailyus.user.service.UserProfileService;
+import com.jaeychoi.dailyus.user.service.UserWithdrawService;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class UserController {
   private final UserActivityService userActivityService;
   private final UserMyGroupService userMyGroupService;
   private final UserPostService userPostService;
+  private final UserWithdrawService userWithdrawService;
 
   @GetMapping("/me")
   @AuthRequired
@@ -80,6 +82,13 @@ public class UserController {
       @AuthenticatedUser CurrentUser user,
       @Valid @RequestBody UserProfileUpdateRequest request) {
     return ApiResponse.success(userProfileService.updateProfile(user.userId(), request));
+  }
+
+  @DeleteMapping("/me")
+  @AuthRequired
+  public ApiResponse<Void> withdraw(@AuthenticatedUser CurrentUser user) {
+    userWithdrawService.withdraw(user.userId());
+    return ApiResponse.success(null);
   }
 
   @GetMapping("/me/posts")
