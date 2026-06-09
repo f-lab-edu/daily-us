@@ -2,6 +2,7 @@ package com.jaeychoi.dailyus.hashtag.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.jaeychoi.dailyus.common.config.MybatisConfig;
 import com.jaeychoi.dailyus.hashtag.domain.Hashtag;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -11,9 +12,11 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 
 @MybatisTest
+@Import(MybatisConfig.class)
 class HashtagMapperTest {
 
   @Autowired
@@ -51,6 +54,22 @@ class HashtagMapperTest {
     // then
     assertThat(hashtag.getHashtagId()).isNotNull();
     assertThat(countHashtagsByName("daily-insert")).isEqualTo(1);
+  }
+
+  @Test
+  void insertReturnsExistingKeyWhenHashtagNameAlreadyExists() throws Exception {
+    // given
+    Long existingHashtagId = insertHashtag("daily-upsert");
+    Hashtag hashtag = Hashtag.builder()
+        .name("daily-upsert")
+        .build();
+
+    // when
+    hashtagMapper.insert(hashtag);
+
+    // then
+    assertThat(hashtag.getHashtagId()).isEqualTo(existingHashtagId);
+    assertThat(countHashtagsByName("daily-upsert")).isEqualTo(1);
   }
 
   @Test
