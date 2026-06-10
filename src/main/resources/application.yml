@@ -38,6 +38,9 @@ app:
     topics:
       post-created: ${KAFKA_TOPIC_POST_CREATED}
   feed-cache:
+    hybrid:
+      enabled: true
+      hot-author-threshold: 10000
     warmup:
       enabled: true
   aggregate-reconciliation:

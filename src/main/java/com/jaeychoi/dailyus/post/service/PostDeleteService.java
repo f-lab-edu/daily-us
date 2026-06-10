@@ -1,5 +1,6 @@
 package com.jaeychoi.dailyus.post.service;
 
+import com.jaeychoi.dailyus.common.app.FeedCacheHybridProperties;
 import com.jaeychoi.dailyus.common.exception.BaseException;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.group.mapper.GroupMapper;
@@ -7,8 +8,10 @@ import com.jaeychoi.dailyus.post.domain.Post;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
 import com.jaeychoi.dailyus.post.repository.PostLikeRepository;
 import com.jaeychoi.dailyus.user.mapper.UserFollowMapper;
+import com.jaeychoi.dailyus.user.mapper.UserMapper;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,9 +25,11 @@ public class PostDeleteService {
 
   private final PostMapper postMapper;
   private final UserFollowMapper userFollowMapper;
+  private final UserMapper userMapper;
   private final GroupMapper groupMapper;
   private final PostFeedCacheService postFeedCacheService;
   private final PostLikeRepository postLikeRepository;
+  private final FeedCacheHybridProperties feedCacheHybridProperties;
 
   @Transactional
   public void deletePost(Long userId, Long postId) {
@@ -42,6 +47,7 @@ public class PostDeleteService {
 
     scheduleAfterCommit(() -> {
       postLikeRepository.clear(postId);
+      postFeedCacheService.removePostFromAuthorFeed(post.getUserId(), post.getPostId());
       removePostFromFeedCaches(post);
     });
   }
@@ -56,12 +62,26 @@ public class PostDeleteService {
   }
 
   private void removePostFromFeedCaches(Post post) {
+    if (isHotAuthor(post.getUserId())) {
+      postFeedCacheService.removePostFromFeeds(List.of(post.getUserId()), post.getPostId());
+      return;
+    }
+
     Set<Long> recipientUserIds = new LinkedHashSet<>();
     recipientUserIds.add(post.getUserId());
     recipientUserIds.addAll(userFollowMapper.findFollowerIdsByFollowee(post.getUserId()));
     recipientUserIds.addAll(groupMapper.findMembersByMemberId(post.getUserId()));
 
     postFeedCacheService.removePostFromFeeds(new ArrayList<>(recipientUserIds), post.getPostId());
+  }
+
+  private boolean isHotAuthor(Long userId) {
+    if (!feedCacheHybridProperties.enabled()) {
+      return false;
+    }
+
+    Long followerCount = userMapper.findFollowerCountByUserId(userId);
+    return followerCount != null && followerCount >= feedCacheHybridProperties.hotAuthorThreshold();
   }
 
   private void scheduleAfterCommit(Runnable action) {

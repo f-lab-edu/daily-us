@@ -1,5 +1,6 @@
 package com.jaeychoi.dailyus.post.service;
 
+import com.jaeychoi.dailyus.common.app.FeedCacheHybridProperties;
 import com.jaeychoi.dailyus.post.dto.PostFeedItemResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedRow;
@@ -12,7 +13,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,17 +27,34 @@ public class PostFeedService {
 
   private final PostMapper postMapper;
   private final PostFeedCacheService postFeedCacheService;
+  private final FeedCacheHybridProperties feedCacheHybridProperties;
 
   public PostFeedResponse getFeed(Long userId, LocalDateTime createdAt, Long postId, Long size) {
     long pageSize = resolvePageSize(size);
+    long querySize = pageSize + 1;
     List<Long> cachedPostIds =
-        postFeedCacheService.findCachedPostIds(userId, postId, pageSize + 1);
+        postFeedCacheService.findCachedPostIds(userId, postId, querySize);
 
     List<PostFeedRow> rows;
     if (cachedPostIds != null) {
       rows = loadFeedRowsByPostIds(cachedPostIds);
     } else {
-      rows = postFeedCacheService.loadFeedRows(userId, createdAt, postId, pageSize + 1);
+      rows = postFeedCacheService.loadFeedRows(userId, createdAt, postId, querySize);
+    }
+
+    if (feedCacheHybridProperties.enabled()) {
+      List<Long> hotAuthorIds = postMapper.findHotFeedAuthorIds(
+          userId,
+          feedCacheHybridProperties.hotAuthorThreshold()
+      );
+      List<PostFeedRow> hotAuthorRows = loadFeedRowsByPostIds(
+          postFeedCacheService.findCachedAuthorPostIds(hotAuthorIds, createdAt, querySize)
+      );
+      rows = mergeFeedRows(
+          rows,
+          filterRowsAfterCursor(hotAuthorRows, createdAt, postId),
+          querySize
+      );
     }
 
     boolean hasNext = hasNext(rows, pageSize);
@@ -57,8 +77,66 @@ public class PostFeedService {
     return size;
   }
 
+  private List<PostFeedRow> filterRowsAfterCursor(
+      List<PostFeedRow> rows,
+      LocalDateTime createdAt,
+      Long postId
+  ) {
+    if (rows == null || rows.isEmpty()) {
+      return List.of();
+    }
+    if (createdAt == null || postId == null) {
+      return rows;
+    }
+
+    return rows.stream()
+        .filter(row -> isBeforeCursor(row, createdAt, postId))
+        .toList();
+  }
+
+  private boolean isBeforeCursor(PostFeedRow row, LocalDateTime createdAt, Long postId) {
+    if (row.createdAt() == null || row.postId() == null) {
+      return false;
+    }
+    if (row.createdAt().isBefore(createdAt)) {
+      return true;
+    }
+    return row.createdAt().isEqual(createdAt) && row.postId() < postId;
+  }
+
+  private List<PostFeedRow> mergeFeedRows(
+      List<PostFeedRow> cachedRows,
+      List<PostFeedRow> hotAuthorRows,
+      long limit
+  ) {
+    Map<Long, PostFeedRow> rowByPostId = Stream.concat(
+            nullSafeStream(cachedRows),
+            nullSafeStream(hotAuthorRows)
+        )
+        .filter(row -> row.postId() != null)
+        .collect(Collectors.toMap(
+            PostFeedRow::postId,
+            row -> row,
+            (left, right) -> left
+        ));
+
+    return rowByPostId.values().stream()
+        .sorted(Comparator
+            .comparing(PostFeedRow::createdAt, Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(PostFeedRow::postId, Comparator.nullsLast(Comparator.reverseOrder())))
+        .limit(limit)
+        .toList();
+  }
+
+  private Stream<PostFeedRow> nullSafeStream(List<PostFeedRow> rows) {
+    if (rows == null) {
+      return Stream.empty();
+    }
+    return rows.stream().filter(Objects::nonNull);
+  }
+
   private List<PostFeedRow> loadFeedRowsByPostIds(List<Long> postIds) {
-    if (postIds.isEmpty()) {
+    if (postIds == null || postIds.isEmpty()) {
       return null;
     }
 
