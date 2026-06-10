@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.jaeychoi.dailyus.common.app.FeedCacheHybridProperties;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedRow;
 import com.jaeychoi.dailyus.post.dto.PostImageRow;
@@ -26,6 +27,9 @@ class PostFeedServiceTest {
 
   @Mock
   private PostFeedCacheService postFeedCacheService;
+
+  @Mock
+  private FeedCacheHybridProperties feedCacheHybridProperties;
 
   @InjectMocks
   private PostFeedService postFeedService;
@@ -191,5 +195,54 @@ class PostFeedServiceTest {
     assertThat(response.lastCreatedAt()).isNull();
     assertThat(response.lastPostId()).isNull();
     assertThat(response.hasNext()).isFalse();
+  }
+
+  @Test
+  void getFeedMergesCachedFeedWithRedisAuthorTimelineWhenHybridEnabled() {
+    Long userId = 1L;
+    PostFeedRow cachedRow = new PostFeedRow(
+        10L,
+        2L,
+        "author-1",
+        "https://example.com/profile-1.png",
+        "cached-content",
+        3L,
+        LocalDateTime.of(2026, 4, 6, 10, 0)
+    );
+    PostFeedRow hotAuthorRow = new PostFeedRow(
+        12L,
+        5L,
+        "hot-author",
+        "https://example.com/profile-hot.png",
+        "hot-content",
+        8L,
+        LocalDateTime.of(2026, 4, 6, 11, 0)
+    );
+    PostFeedRow duplicatedHotAuthorRow = new PostFeedRow(
+        10L,
+        2L,
+        "author-1",
+        "https://example.com/profile-1.png",
+        "cached-content",
+        3L,
+        LocalDateTime.of(2026, 4, 6, 10, 0)
+    );
+
+    when(feedCacheHybridProperties.enabled()).thenReturn(true);
+    when(feedCacheHybridProperties.hotAuthorThreshold()).thenReturn(10000L);
+    when(postFeedCacheService.findCachedPostIds(userId, null, 3L)).thenReturn(List.of(10L));
+    when(postMapper.findFeedPostsByIds(List.of(10L))).thenReturn(List.of(cachedRow));
+    when(postMapper.findHotFeedAuthorIds(userId, 10000L)).thenReturn(List.of(5L));
+    when(postFeedCacheService.findCachedAuthorPostIds(List.of(5L), null, 3L))
+        .thenReturn(List.of(12L, 10L));
+    when(postMapper.findFeedPostsByIds(List.of(12L, 10L)))
+        .thenReturn(List.of(hotAuthorRow, duplicatedHotAuthorRow));
+    when(postMapper.findImagesByPostIds(List.of(12L, 10L))).thenReturn(List.of());
+
+    PostFeedResponse response = postFeedService.getFeed(userId, null, null, 2L);
+
+    assertThat(response.items()).extracting("postId").containsExactly(12L, 10L);
+    assertThat(response.hasNext()).isFalse();
+    assertThat(response.size()).isEqualTo(2L);
   }
 }

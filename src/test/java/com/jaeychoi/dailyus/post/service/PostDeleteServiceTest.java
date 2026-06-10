@@ -5,6 +5,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.jaeychoi.dailyus.common.app.FeedCacheHybridProperties;
 import com.jaeychoi.dailyus.common.exception.BaseException;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.group.mapper.GroupMapper;
@@ -12,6 +13,7 @@ import com.jaeychoi.dailyus.post.domain.Post;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
 import com.jaeychoi.dailyus.post.repository.PostLikeRepository;
 import com.jaeychoi.dailyus.user.mapper.UserFollowMapper;
+import com.jaeychoi.dailyus.user.mapper.UserMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +31,9 @@ class PostDeleteServiceTest {
   private UserFollowMapper userFollowMapper;
 
   @Mock
+  private UserMapper userMapper;
+
+  @Mock
   private GroupMapper groupMapper;
 
   @Mock
@@ -36,6 +41,9 @@ class PostDeleteServiceTest {
 
   @Mock
   private PostLikeRepository postLikeRepository;
+
+  @Mock
+  private FeedCacheHybridProperties feedCacheHybridProperties;
 
   @InjectMocks
   private PostDeleteService postDeleteService;
@@ -56,7 +64,24 @@ class PostDeleteServiceTest {
     verify(postMapper).deleteImagesByPostId(10L);
     verify(postMapper).delete(10L, 1L);
     verify(postLikeRepository).clear(10L);
+    verify(postFeedCacheService).removePostFromAuthorFeed(1L, 10L);
     verify(postFeedCacheService).removePostFromFeeds(List.of(1L, 2L, 3L, 4L), 10L);
+  }
+
+  @Test
+  void deletePostDoesNotScanFollowersWhenAuthorIsHot() {
+    when(postMapper.findById(10L)).thenReturn(Post.builder().postId(10L).userId(1L).build());
+    when(postMapper.delete(10L, 1L)).thenReturn(1);
+    when(feedCacheHybridProperties.enabled()).thenReturn(true);
+    when(feedCacheHybridProperties.hotAuthorThreshold()).thenReturn(10000L);
+    when(userMapper.findFollowerCountByUserId(1L)).thenReturn(10000L);
+
+    postDeleteService.deletePost(1L, 10L);
+
+    verify(postFeedCacheService).removePostFromAuthorFeed(1L, 10L);
+    verify(postFeedCacheService).removePostFromFeeds(List.of(1L), 10L);
+    verify(userFollowMapper, never()).findFollowerIdsByFollowee(1L);
+    verify(groupMapper, never()).findMembersByMemberId(1L);
   }
 
   @Test
