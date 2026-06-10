@@ -59,6 +59,24 @@ class UserMapperTest {
   }
 
   @Test
+  void findFollowerCountByUserIdReturnsActiveUserFollowerCount() throws Exception {
+    Long activeUserId = insertUser(uniqueEmail("active-count"), uniqueNickname("active-count"), null);
+    Long deletedUserId = insertUser(
+        uniqueEmail("deleted-count"),
+        uniqueNickname("deleted-count"),
+        LocalDateTime.of(2026, 3, 26, 10, 0)
+    );
+    updateFollowerCount(activeUserId, 10000L);
+    updateFollowerCount(deletedUserId, 10000L);
+
+    Long activeFollowerCount = userMapper.findFollowerCountByUserId(activeUserId);
+    Long deletedFollowerCount = userMapper.findFollowerCountByUserId(deletedUserId);
+
+    assertThat(activeFollowerCount).isEqualTo(10000L);
+    assertThat(deletedFollowerCount).isNull();
+  }
+
+  @Test
   void insertPersistsUserAndSetsGeneratedKey() {
     String email = uniqueEmail("new");
     String nickname = uniqueNickname("new-user");
@@ -125,6 +143,17 @@ class UserMapperTest {
         assertThat(generatedKeys.next()).isTrue();
         return generatedKeys.getLong(1);
       }
+    }
+  }
+
+  private void updateFollowerCount(Long userId, Long followerCount) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE users SET follower_count = ? WHERE user_id = ?"
+        )) {
+      statement.setLong(1, followerCount);
+      statement.setLong(2, userId);
+      statement.executeUpdate();
     }
   }
 

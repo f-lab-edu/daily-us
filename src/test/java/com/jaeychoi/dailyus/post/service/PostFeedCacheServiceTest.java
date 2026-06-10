@@ -1,9 +1,11 @@
 package com.jaeychoi.dailyus.post.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.jaeychoi.dailyus.common.app.FeedCacheHybridProperties;
 import com.jaeychoi.dailyus.post.dto.PostFeedRow;
 import com.jaeychoi.dailyus.post.mapper.PostMapper;
 import com.jaeychoi.dailyus.post.repository.PostFeedRepository;
@@ -23,6 +25,9 @@ class PostFeedCacheServiceTest {
 
   @Mock
   private PostFeedRepository postFeedRepository;
+
+  @Mock
+  private FeedCacheHybridProperties feedCacheHybridProperties;
 
   @InjectMocks
   private PostFeedCacheService postFeedCacheService;
@@ -102,9 +107,66 @@ class PostFeedCacheServiceTest {
   }
 
   @Test
+  void loadFeedRowsExcludesHotAuthorsWhenHybridEnabled() {
+    Long userId = 1L;
+    when(feedCacheHybridProperties.enabled()).thenReturn(true);
+    when(feedCacheHybridProperties.hotAuthorThreshold()).thenReturn(10000L);
+    when(postMapper.existsFeedPosts(userId)).thenReturn(true);
+    when(postMapper.findNormalFeedPosts(userId, 10000L, 100L, null, null)).thenReturn(List.of());
+
+    postFeedCacheService.loadFeedRows(userId, null, null, 3L);
+
+    verify(postMapper).findNormalFeedPosts(userId, 10000L, 100L, null, null);
+    verify(postMapper, never()).findFeedPosts(userId, 100L, null, null);
+  }
+
+  @Test
+  void cachePostToAuthorFeedUsesSharedAuthorFeedCacheSize() {
+    LocalDateTime createdAt = LocalDateTime.of(2026, 4, 26, 12, 0);
+
+    postFeedCacheService.cachePostToAuthorFeed(3L, 15L, createdAt);
+
+    verify(postFeedRepository).addPostIdToAuthorFeed(3L, 15L, createdAt, 500L);
+  }
+
+  @Test
+  void findCachedAuthorPostIdsWarmsAuthorTimelineWhenCacheMiss() {
+    Long authorId = 3L;
+    LocalDateTime createdAt = LocalDateTime.of(2026, 4, 26, 12, 0);
+    PostFeedRow row = new PostFeedRow(
+        15L,
+        authorId,
+        "author",
+        null,
+        "content",
+        0L,
+        createdAt
+    );
+    when(postFeedRepository.findByAuthorIdsAndCursor(List.of(authorId), null, 3L))
+        .thenReturn(List.of(), List.of(15L));
+    when(postMapper.findPostsByUserId(authorId, 500L, null, null)).thenReturn(List.of(row));
+
+    List<Long> postIds = postFeedCacheService.findCachedAuthorPostIds(
+        List.of(authorId),
+        null,
+        3L
+    );
+
+    verify(postFeedRepository).addPostIdToAuthorFeed(authorId, 15L, createdAt, 500L);
+    assertThat(postIds).containsExactly(15L);
+  }
+
+  @Test
   void removePostFromFeedsDelegatesToRepository() {
     postFeedCacheService.removePostFromFeeds(List.of(3L, 9L), 15L);
 
     verify(postFeedRepository).removePostIdFromFeeds(List.of(3L, 9L), 15L);
+  }
+
+  @Test
+  void removePostFromAuthorFeedDelegatesToRepository() {
+    postFeedCacheService.removePostFromAuthorFeed(3L, 15L);
+
+    verify(postFeedRepository).removePostIdFromAuthorFeed(3L, 15L);
   }
 }

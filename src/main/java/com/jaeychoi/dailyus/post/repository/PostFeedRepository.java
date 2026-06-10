@@ -3,8 +3,10 @@ package com.jaeychoi.dailyus.post.repository;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.dao.TypeMismatchDataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Repository;
 public class PostFeedRepository {
 
   private static final String KEY_PREFIX = "feed:user:";
+  private static final String AUTHOR_KEY_PREFIX = "feed:author:";
   private static final DefaultRedisScript<Long> ADD_AND_TRIM_SCRIPT = new DefaultRedisScript<>(
       """
           local member = ARGV[1]
@@ -124,6 +127,63 @@ public class PostFeedRepository {
     );
   }
 
+  public void addPostIdToAuthorFeed(
+      Long authorId,
+      Long postId,
+      LocalDateTime createdAt,
+      long maxCount
+  ) {
+    if (authorId == null || postId == null || createdAt == null || maxCount <= 0) {
+      return;
+    }
+
+    redisTemplate.execute(
+        ADD_AND_TRIM_SCRIPT,
+        List.of(buildAuthorKey(authorId)),
+        String.valueOf(postId),
+        String.valueOf(toEpochMilli(createdAt)),
+        String.valueOf(maxCount)
+    );
+  }
+
+  public List<Long> findByAuthorIdsAndCursor(
+      List<Long> authorIds,
+      LocalDateTime createdAt,
+      long size
+  ) {
+    if (authorIds == null || authorIds.isEmpty() || size <= 0) {
+      return List.of();
+    }
+
+    double maxScore = createdAt == null ? Double.POSITIVE_INFINITY : toEpochMilli(createdAt);
+    Set<Long> postIds = new LinkedHashSet<>();
+    for (Long authorId : authorIds) {
+      if (authorId == null) {
+        continue;
+      }
+
+      Set<String> cachedPostIds = redisTemplate.opsForZSet().reverseRangeByScore(
+          buildAuthorKey(authorId),
+          Double.NEGATIVE_INFINITY,
+          maxScore,
+          0,
+          size
+      );
+      if (cachedPostIds == null || cachedPostIds.isEmpty()) {
+        continue;
+      }
+
+      for (String cachedPostId : cachedPostIds) {
+        Long postId = toLongOrNull(cachedPostId);
+        if (postId != null) {
+          postIds.add(postId);
+        }
+      }
+    }
+
+    return new ArrayList<>(postIds);
+  }
+
   public void removePostIdFromFeeds(List<Long> userIds, Long postId) {
     if (userIds == null || userIds.isEmpty() || postId == null) {
       return;
@@ -138,8 +198,20 @@ public class PostFeedRepository {
     }
   }
 
+  public void removePostIdFromAuthorFeed(Long authorId, Long postId) {
+    if (authorId == null || postId == null) {
+      return;
+    }
+
+    redisTemplate.opsForZSet().remove(buildAuthorKey(authorId), String.valueOf(postId));
+  }
+
   private String buildKey(Long userId) {
     return KEY_PREFIX + userId;
+  }
+
+  private String buildAuthorKey(Long authorId) {
+    return AUTHOR_KEY_PREFIX + authorId;
   }
 
   private String resolveCursor(Long cursor) {

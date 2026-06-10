@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -51,11 +53,12 @@ public class PostCreateService {
         postMapper.findById(post.getPostId()),
         "Saved post must exist after insert."
     );
-    postCreatedEventPublisher.publish(new PostCreatedEvent(
+    PostCreatedEvent event = new PostCreatedEvent(
         post.getPostId(),
         userId,
         savedPost.getCreatedAt()
-    ));
+    );
+    scheduleAfterCommit(() -> postCreatedEventPublisher.publish(event));
 
     return new PostCreateResponse(
         post.getPostId(),
@@ -118,5 +121,19 @@ public class PostCreateService {
     hashtagMapper.insert(newHashtag);
     existingHashtags.put(normalizedName, newHashtag);
     return newHashtag;
+  }
+
+  private void scheduleAfterCommit(Runnable action) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      action.run();
+      return;
+    }
+
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+      @Override
+      public void afterCommit() {
+        action.run();
+      }
+    });
   }
 }
