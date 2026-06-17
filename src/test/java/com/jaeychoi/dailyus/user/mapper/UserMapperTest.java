@@ -12,6 +12,7 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @MybatisTest
 class UserMapperTest {
@@ -21,6 +22,9 @@ class UserMapperTest {
 
   @Autowired
   private DataSource dataSource;
+
+  @Autowired
+  private JdbcTemplate jdbcTemplate;
 
   @Test
   void existsActiveByEmailAndNicknameReturnsTrueOnlyForActiveUsers() throws Exception {
@@ -94,6 +98,27 @@ class UserMapperTest {
     assertThat(updatedUser.getProfileImage()).isEqualTo("https://cdn.example.com/profile.png");
   }
 
+  @Test
+  void withdrawUpdatesEmailNicknameAndDeletedAtForActiveUser() throws Exception {
+    Long userId = insertUser(uniqueEmail("withdraw"), uniqueNickname("withdraw-user"), null);
+    User user = userMapper.findActiveById(userId);
+
+    user.setEmail("withdrawn+" + userId + "+" + user.getEmail());
+    user.setNickname("withdrawn-" + userId + "-" + user.getNickname());
+    user.setDeletedAt(LocalDateTime.of(2026, 6, 17, 23, 0));
+
+    int deletedRows = userMapper.withdraw(user);
+    LocalDateTime deletedAt = findDeletedAtByUserId(userId);
+    String withdrawnEmail = findEmailByUserId(userId);
+    String withdrawnNickname = findNicknameByUserId(userId);
+
+    assertThat(deletedRows).isEqualTo(1);
+    assertThat(countActiveUsersById(userId)).isZero();
+    assertThat(deletedAt).isNotNull();
+    assertThat(withdrawnEmail).startsWith("withdrawn+" + userId + "+");
+    assertThat(withdrawnNickname).startsWith("withdrawn-" + userId + "-");
+  }
+
   private Long insertUser(String email, String nickname, LocalDateTime deletedAt) throws Exception {
     try (Connection connection = dataSource.getConnection();
         PreparedStatement statement = connection.prepareStatement(
@@ -126,6 +151,40 @@ class UserMapperTest {
         return generatedKeys.getLong(1);
       }
     }
+  }
+
+  private LocalDateTime findDeletedAtByUserId(Long userId) throws Exception {
+    Timestamp deletedAt = jdbcTemplate.queryForObject(
+        "SELECT deleted_at FROM users WHERE user_id = ?",
+        Timestamp.class,
+        userId
+    );
+    return deletedAt == null ? null : deletedAt.toLocalDateTime();
+  }
+
+  private String findEmailByUserId(Long userId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT email FROM users WHERE user_id = ?",
+        String.class,
+        userId
+    );
+  }
+
+  private String findNicknameByUserId(Long userId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT nickname FROM users WHERE user_id = ?",
+        String.class,
+        userId
+    );
+  }
+
+  private int countActiveUsersById(Long userId) {
+    Integer count = jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM users WHERE user_id = ? AND deleted_at IS NULL",
+        Integer.class,
+        userId
+    );
+    return count == null ? 0 : count;
   }
 
   private String uniqueEmail(String prefix) {
