@@ -2,8 +2,10 @@ package com.jaeychoi.dailyus.common.web;
 
 import com.jaeychoi.dailyus.auth.annotation.AuthRequired;
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
+import com.jaeychoi.dailyus.auth.repository.RefreshTokenRepository;
 import com.jaeychoi.dailyus.common.exception.BaseException;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
+import com.jaeychoi.dailyus.common.jwt.AccessTokenDetails;
 import com.jaeychoi.dailyus.common.jwt.JwtTokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private static final String AUTHORIZATION_HEADER = "Authorization";
 
   private final JwtTokenProvider jwtTokenProvider;
+  private final RefreshTokenRepository refreshTokenRepository;
   private final RequestMappingHandlerMapping requestMappingHandlerMapping;
   private final HandlerExceptionResolver handlerExceptionResolver;
 
@@ -55,7 +58,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       }
 
       String token = authorizationHeader.substring(BEARER_PREFIX.length());
-      CurrentUser user = jwtTokenProvider.parseAccessToken(token);
+      AccessTokenDetails accessTokenDetails = jwtTokenProvider.parseAccessTokenDetails(token);
+      if (refreshTokenRepository.isAccessTokenBlacklisted(accessTokenDetails.tokenId())) {
+        throw new BaseException(ErrorCode.INVALID_TOKEN);
+      }
+      CurrentUser user = accessTokenDetails.user();
 
       request.setAttribute(AuthRequestAttributes.CURRENT_USER, user);
       filterChain.doFilter(request, response);

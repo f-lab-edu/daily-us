@@ -3,6 +3,8 @@ package com.jaeychoi.dailyus.user.service;
 import com.jaeychoi.dailyus.auth.repository.RefreshTokenRepository;
 import com.jaeychoi.dailyus.common.exception.BaseException;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
+import com.jaeychoi.dailyus.common.jwt.AccessTokenDetails;
+import com.jaeychoi.dailyus.common.jwt.JwtTokenProvider;
 import com.jaeychoi.dailyus.user.domain.User;
 import com.jaeychoi.dailyus.user.mapper.UserMapper;
 import java.time.LocalDateTime;
@@ -16,9 +18,10 @@ public class UserWithdrawService {
 
   private final UserMapper userMapper;
   private final RefreshTokenRepository refreshTokenRepository;
+  private final JwtTokenProvider jwtTokenProvider;
 
   @Transactional
-  public void withdraw(Long userId) {
+  public void withdraw(Long userId, String accessToken) {
     User user = userMapper.findActiveById(userId);
     if (user == null) {
       throw new BaseException(ErrorCode.USER_NOT_FOUND);
@@ -34,6 +37,8 @@ public class UserWithdrawService {
       throw new BaseException(ErrorCode.USER_NOT_FOUND);
     }
 
+    AccessTokenDetails accessTokenDetails = jwtTokenProvider.parseAccessTokenDetails(accessToken);
+    refreshTokenRepository.blacklistAccessToken(accessTokenDetails);
     refreshTokenRepository.delete(userId);
   }
 

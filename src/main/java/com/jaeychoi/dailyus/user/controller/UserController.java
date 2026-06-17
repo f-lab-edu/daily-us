@@ -3,6 +3,8 @@ package com.jaeychoi.dailyus.user.controller;
 import com.jaeychoi.dailyus.auth.annotation.AuthRequired;
 import com.jaeychoi.dailyus.auth.annotation.AuthenticatedUser;
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
+import com.jaeychoi.dailyus.common.exception.BaseException;
+import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
 import com.jaeychoi.dailyus.post.dto.PostFeedResponse;
 import com.jaeychoi.dailyus.user.dto.UserActivityResponse;
@@ -17,6 +19,7 @@ import com.jaeychoi.dailyus.user.service.UserMyGroupService;
 import com.jaeychoi.dailyus.user.service.UserPostService;
 import com.jaeychoi.dailyus.user.service.UserProfileService;
 import com.jaeychoi.dailyus.user.service.UserWithdrawService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -86,8 +89,11 @@ public class UserController {
 
   @DeleteMapping("/me")
   @AuthRequired
-  public ApiResponse<Void> withdraw(@AuthenticatedUser CurrentUser user) {
-    userWithdrawService.withdraw(user.userId());
+  public ApiResponse<Void> withdraw(
+      @AuthenticatedUser CurrentUser user,
+      HttpServletRequest request
+  ) {
+    userWithdrawService.withdraw(user.userId(), extractBearerToken(request));
     return ApiResponse.success(null);
   }
 
@@ -133,5 +139,13 @@ public class UserController {
       @PathVariable("userId") Long targetUserId) {
     UserFollowResponse response = userFollowService.unfollow(user.userId(), targetUserId);
     return ApiResponse.success(response);
+  }
+
+  private String extractBearerToken(HttpServletRequest request) {
+    String authorizationHeader = request.getHeader("Authorization");
+    if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+      throw new BaseException(ErrorCode.UNAUTHORIZED);
+    }
+    return authorizationHeader.substring("Bearer ".length());
   }
 }

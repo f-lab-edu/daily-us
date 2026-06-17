@@ -1,6 +1,7 @@
 package com.jaeychoi.dailyus.auth.repository;
 
 import com.jaeychoi.dailyus.common.jwt.RefreshTokenDetails;
+import com.jaeychoi.dailyus.common.jwt.AccessTokenDetails;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -89,6 +90,19 @@ public class RefreshTokenRepository {
     return Boolean.TRUE.equals(hasKey);
   }
 
+  public void blacklistAccessToken(AccessTokenDetails accessTokenDetails) {
+    redisTemplate.opsForValue().set(
+        accessBlacklistKey(accessTokenDetails.tokenId()),
+        "1",
+        ttlUntil(accessTokenDetails.expiresAt())
+    );
+  }
+
+  public boolean isAccessTokenBlacklisted(String tokenId) {
+    Boolean hasKey = redisTemplate.hasKey(accessBlacklistKey(tokenId));
+    return Boolean.TRUE.equals(hasKey);
+  }
+
   public boolean revoke(Long userId, RefreshTokenDetails refreshTokenDetails) {
     Long updated = redisTemplate.execute(
         REVOKE_SCRIPT,
@@ -109,6 +123,10 @@ public class RefreshTokenRepository {
 
   private String blacklistKey(String tokenId) {
     return "auth:refresh:blacklist:" + tokenId;
+  }
+
+  private String accessBlacklistKey(String tokenId) {
+    return "auth:access:blacklist:" + tokenId;
   }
 
   private Duration ttlUntil(Instant expiresAt) {

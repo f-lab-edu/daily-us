@@ -260,6 +260,7 @@ class UserControllerTest {
   @Test
   void withdrawReturnsOkResponse() throws Exception {
     mockMvc.perform(delete("/api/v1/users/me")
+            .header("Authorization", "Bearer access-token")
             .requestAttr(AuthRequestAttributes.CURRENT_USER,
                 new CurrentUser(1L, "user@example.com", "user")))
         .andExpect(status().isOk())
