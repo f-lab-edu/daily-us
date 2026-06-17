@@ -19,7 +19,7 @@ public interface UserMapper {
 
   int updateProfile(User user);
 
-  int delete(Long userId);
+  int withdraw(User user);
 
   void incrementFollowerCount(Long userId);
 

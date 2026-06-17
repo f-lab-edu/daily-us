@@ -121,9 +121,11 @@
         AND deleted_at IS NULL
     </update>
 
-    <update id="delete" parameterType="long">
+    <update id="withdraw" parameterType="com.jaeychoi.dailyus.user.domain.User">
       UPDATE users
-      SET deleted_at = CURRENT_TIMESTAMP,
+      SET email = #{email},
+          nickname = #{nickname},
+          deleted_at = #{deletedAt},
           updated_at = CURRENT_TIMESTAMP
       WHERE user_id = #{userId}
         AND deleted_at IS NULL

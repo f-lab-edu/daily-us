@@ -99,15 +99,24 @@ class UserMapperTest {
   }
 
   @Test
-  void deleteSetsDeletedAtForActiveUser() throws Exception {
+  void withdrawUpdatesEmailNicknameAndDeletedAtForActiveUser() throws Exception {
     Long userId = insertUser(uniqueEmail("withdraw"), uniqueNickname("withdraw-user"), null);
+    User user = userMapper.findActiveById(userId);
 
-    int deletedRows = userMapper.delete(userId);
+    user.setEmail("withdrawn+" + userId + "+" + user.getEmail());
+    user.setNickname("withdrawn-" + userId + "-" + user.getNickname());
+    user.setDeletedAt(LocalDateTime.of(2026, 6, 17, 23, 0));
+
+    int deletedRows = userMapper.withdraw(user);
     LocalDateTime deletedAt = findDeletedAtByUserId(userId);
+    String withdrawnEmail = findEmailByUserId(userId);
+    String withdrawnNickname = findNicknameByUserId(userId);
 
     assertThat(deletedRows).isEqualTo(1);
-    assertThat(userMapper.existsActiveById(userId)).isFalse();
+    assertThat(countActiveUsersById(userId)).isZero();
     assertThat(deletedAt).isNotNull();
+    assertThat(withdrawnEmail).startsWith("withdrawn+" + userId + "+");
+    assertThat(withdrawnNickname).startsWith("withdrawn-" + userId + "-");
   }
 
   private Long insertUser(String email, String nickname, LocalDateTime deletedAt) throws Exception {
@@ -151,6 +160,31 @@ class UserMapperTest {
         userId
     );
     return deletedAt == null ? null : deletedAt.toLocalDateTime();
+  }
+
+  private String findEmailByUserId(Long userId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT email FROM users WHERE user_id = ?",
+        String.class,
+        userId
+    );
+  }
+
+  private String findNicknameByUserId(Long userId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT nickname FROM users WHERE user_id = ?",
+        String.class,
+        userId
+    );
+  }
+
+  private int countActiveUsersById(Long userId) {
+    Integer count = jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM users WHERE user_id = ? AND deleted_at IS NULL",
+        Integer.class,
+        userId
+    );
+    return count == null ? 0 : count;
   }
 
   private String uniqueEmail(String prefix) {
