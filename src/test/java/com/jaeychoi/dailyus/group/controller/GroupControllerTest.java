@@ -2,6 +2,7 @@ package com.jaeychoi.dailyus.group.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -29,6 +30,7 @@ import com.jaeychoi.dailyus.group.dto.GroupRankResponse;
 import com.jaeychoi.dailyus.group.dto.GroupUpdateRequest;
 import com.jaeychoi.dailyus.group.dto.GroupUpdateResponse;
 import com.jaeychoi.dailyus.group.service.GroupCreateService;
+import com.jaeychoi.dailyus.group.service.GroupDeleteService;
 import com.jaeychoi.dailyus.group.service.GroupDetailService;
 import com.jaeychoi.dailyus.group.service.GroupJoinService;
 import com.jaeychoi.dailyus.group.service.GroupLeaveService;
@@ -60,6 +62,9 @@ class GroupControllerTest {
   private GroupDetailService groupDetailService;
 
   @Mock
+  private GroupDeleteService groupDeleteService;
+
+  @Mock
   private GroupJoinService groupJoinService;
 
   @Mock
@@ -88,7 +93,8 @@ class GroupControllerTest {
 
     objectMapper = new ObjectMapper();
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new GroupController(groupCreateService, groupDetailService, groupJoinService,
+            new GroupController(groupCreateService, groupDetailService, groupDeleteService,
+                groupJoinService,
                 groupLeaveService,
                 groupListService, groupRankService, groupMembersService, groupUpdateService))
         .setControllerAdvice(new GlobalExceptionHandler())
@@ -540,6 +546,57 @@ class GroupControllerTest {
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value(ErrorCode.GROUP_NOT_JOINED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_NOT_JOINED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void deleteGroupReturnsOkResponse() throws Exception {
+    mockMvc.perform(delete("/api/v1/groups/1")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.message").doesNotExist())
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void deleteGroupReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(delete("/api/v1/groups/1"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void deleteGroupReturnsNotFoundWhenGroupDoesNotExist() throws Exception {
+    doThrow(new BaseException(ErrorCode.GROUP_NOT_FOUND))
+        .when(groupDeleteService).delete(anyLong(), anyLong());
+
+    mockMvc.perform(delete("/api/v1/groups/1")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester")))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value(ErrorCode.GROUP_NOT_FOUND.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.GROUP_NOT_FOUND.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void deleteGroupReturnsForbiddenWhenUserIsNotOwner() throws Exception {
+    doThrow(new BaseException(ErrorCode.FORBIDDEN))
+        .when(groupDeleteService).delete(anyLong(), anyLong());
+
+    mockMvc.perform(delete("/api/v1/groups/1")
+            .requestAttr(
+                AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(2L, "tester@example.com", "tester")))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value(ErrorCode.FORBIDDEN.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.FORBIDDEN.getMessage()))
         .andExpect(jsonPath("$.data").doesNotExist());
   }
 

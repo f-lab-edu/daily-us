@@ -7,16 +7,19 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
+import com.jaeychoi.dailyus.comment.dto.CommentLikeResponse;
 import com.jaeychoi.dailyus.comment.dto.CommentResponse;
 import com.jaeychoi.dailyus.comment.dto.CommentResponseItem;
 import com.jaeychoi.dailyus.comment.dto.CommentUpdateRequest;
 import com.jaeychoi.dailyus.comment.dto.CommentUpdateResponse;
 import com.jaeychoi.dailyus.comment.service.CommentDeleteService;
 import com.jaeychoi.dailyus.comment.service.CommentGetService;
+import com.jaeychoi.dailyus.comment.service.CommentLikeService;
 import com.jaeychoi.dailyus.comment.service.CommentUpdateService;
 import com.jaeychoi.dailyus.common.exception.ErrorCode;
 import com.jaeychoi.dailyus.common.exception.GlobalExceptionHandler;
@@ -45,6 +48,8 @@ class CommentControllerTest {
   private CommentGetService commentGetService;
   @Mock
   private CommentUpdateService commentUpdateService;
+  @Mock
+  private CommentLikeService commentLikeService;
 
   private MockMvc mockMvc;
   private ObjectMapper objectMapper;
@@ -55,7 +60,12 @@ class CommentControllerTest {
     validator.afterPropertiesSet();
 
     mockMvc = MockMvcBuilders.standaloneSetup(
-            new CommentController(commentDeleteService, commentUpdateService, commentGetService))
+            new CommentController(
+                commentDeleteService,
+                commentUpdateService,
+                commentGetService,
+                commentLikeService
+            ))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setValidator(validator)
@@ -164,8 +174,45 @@ class CommentControllerTest {
   }
 
   @Test
+  void likeCommentReturnsCreatedResponse() throws Exception {
+    when(commentLikeService.like(1L, 10L)).thenReturn(new CommentLikeResponse(10L, true, 3L));
+
+    mockMvc.perform(post("/api/v1/comments/10/like")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.commentId").value(10L))
+        .andExpect(jsonPath("$.data.liked").value(true))
+        .andExpect(jsonPath("$.data.likeCount").value(3L));
+  }
+
+  @Test
+  void unlikeCommentReturnsOkResponse() throws Exception {
+    when(commentLikeService.unlike(1L, 10L)).thenReturn(new CommentLikeResponse(10L, false, 2L));
+
+    mockMvc.perform(delete("/api/v1/comments/10/like")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data.commentId").value(10L))
+        .andExpect(jsonPath("$.data.liked").value(false))
+        .andExpect(jsonPath("$.data.likeCount").value(2L));
+  }
+
+  @Test
   void getRepliesReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
     mockMvc.perform(get("/api/v1/comments/101/replies"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void likeCommentReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(post("/api/v1/comments/10/like"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))

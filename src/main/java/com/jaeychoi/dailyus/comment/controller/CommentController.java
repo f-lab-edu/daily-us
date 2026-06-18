@@ -4,10 +4,12 @@ import com.jaeychoi.dailyus.auth.annotation.AuthRequired;
 import com.jaeychoi.dailyus.auth.annotation.AuthenticatedUser;
 import com.jaeychoi.dailyus.auth.domain.CurrentUser;
 import com.jaeychoi.dailyus.comment.dto.CommentResponse;
+import com.jaeychoi.dailyus.comment.dto.CommentLikeResponse;
 import com.jaeychoi.dailyus.comment.dto.CommentUpdateRequest;
 import com.jaeychoi.dailyus.comment.dto.CommentUpdateResponse;
 import com.jaeychoi.dailyus.comment.service.CommentDeleteService;
 import com.jaeychoi.dailyus.comment.service.CommentGetService;
+import com.jaeychoi.dailyus.comment.service.CommentLikeService;
 import com.jaeychoi.dailyus.comment.service.CommentUpdateService;
 import com.jaeychoi.dailyus.common.web.ApiResponse;
 import jakarta.validation.Valid;
@@ -18,10 +20,13 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/v1/comments")
@@ -31,6 +36,7 @@ public class CommentController {
   private final CommentDeleteService commentDeleteService;
   private final CommentUpdateService commentUpdateService;
   private final CommentGetService commentGetService;
+  private final CommentLikeService commentLikeService;
 
   @DeleteMapping("/{commentId}")
   @AuthRequired
@@ -50,6 +56,25 @@ public class CommentController {
       @Valid @RequestBody CommentUpdateRequest request
   ) {
     return ApiResponse.success(commentUpdateService.update(user.userId(), commentId, request));
+  }
+
+  @PostMapping("/{commentId}/like")
+  @ResponseStatus(HttpStatus.CREATED)
+  @AuthRequired
+  public ApiResponse<CommentLikeResponse> likeComment(
+      @AuthenticatedUser CurrentUser user,
+      @PathVariable Long commentId
+  ) {
+    return ApiResponse.success(commentLikeService.like(user.userId(), commentId));
+  }
+
+  @DeleteMapping("/{commentId}/like")
+  @AuthRequired
+  public ApiResponse<CommentLikeResponse> unlikeComment(
+      @AuthenticatedUser CurrentUser user,
+      @PathVariable Long commentId
+  ) {
+    return ApiResponse.success(commentLikeService.unlike(user.userId(), commentId));
   }
 
   @GetMapping("/{commentId}/replies")

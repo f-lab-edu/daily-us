@@ -44,7 +44,21 @@ public class JwtTokenProvider {
   }
 
   public CurrentUser parseAccessToken(String token) {
-    return parse(token, JwtTokenType.ACCESS, ErrorCode.INVALID_TOKEN);
+    return parseAccessTokenDetails(token).user();
+  }
+
+  public AccessTokenDetails parseAccessTokenDetails(String token) {
+    Claims claims = parseClaims(token, JwtTokenType.ACCESS, ErrorCode.INVALID_TOKEN);
+    String tokenId = claims.getId();
+    if (tokenId == null || tokenId.isBlank()) {
+      throw new BaseException(ErrorCode.INVALID_TOKEN);
+    }
+
+    return new AccessTokenDetails(
+        JwtUserClaims.from(claims).toCurrentUser(Long.valueOf(claims.getSubject())),
+        tokenId,
+        claims.getExpiration().toInstant()
+    );
   }
 
   public CurrentUser parseRefreshToken(String token) {

@@ -29,6 +29,7 @@ import com.jaeychoi.dailyus.user.service.UserFollowService;
 import com.jaeychoi.dailyus.user.service.UserMyGroupService;
 import com.jaeychoi.dailyus.user.service.UserPostService;
 import com.jaeychoi.dailyus.user.service.UserProfileService;
+import com.jaeychoi.dailyus.user.service.UserWithdrawService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,13 +59,16 @@ class UserControllerTest {
   @Mock
   private UserPostService userPostService;
 
+  @Mock
+  private UserWithdrawService userWithdrawService;
+
   private MockMvc mockMvc;
 
   @BeforeEach
   void setUp() {
     mockMvc = MockMvcBuilders.standaloneSetup(
             new UserController(userFollowService, userProfileService, userActivityService,
-                userMyGroupService, userPostService))
+                userMyGroupService, userPostService, userWithdrawService))
         .setControllerAdvice(new GlobalExceptionHandler())
         .setCustomArgumentResolvers(new AuthenticatedUserArgumentResolver())
         .setMessageConverters(new JacksonJsonHttpMessageConverter())
@@ -254,8 +258,28 @@ class UserControllerTest {
   }
 
   @Test
+  void withdrawReturnsOkResponse() throws Exception {
+    mockMvc.perform(delete("/api/v1/users/me")
+            .header("Authorization", "Bearer access-token")
+            .requestAttr(AuthRequestAttributes.CURRENT_USER,
+                new CurrentUser(1L, "user@example.com", "user")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("OK"))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
   void getMyProfileReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
     mockMvc.perform(get("/api/v1/users/me"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
+        .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))
+        .andExpect(jsonPath("$.data").doesNotExist());
+  }
+
+  @Test
+  void withdrawReturnsUnauthorizedWhenCurrentUserMissing() throws Exception {
+    mockMvc.perform(delete("/api/v1/users/me"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value(ErrorCode.UNAUTHORIZED.getCode()))
         .andExpect(jsonPath("$.message").value(ErrorCode.UNAUTHORIZED.getMessage()))

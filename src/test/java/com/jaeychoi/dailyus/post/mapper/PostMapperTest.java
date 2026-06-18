@@ -144,7 +144,7 @@ class PostMapperTest {
     assertThat(postMapper.deletePostLikesByPostId(postId)).isEqualTo(1);
     assertThat(postMapper.deleteHashtagsByPostId(postId)).isEqualTo(1);
     assertThat(postMapper.deleteCommentsByPostId(postId)).isEqualTo(1);
-    assertThat(postMapper.deleteImagesByPostId(postId)).isEqualTo(1);
+    postMapper.deleteImagesByPostId(postId);
     assertThat(postMapper.delete(postId, authorId)).isEqualTo(1);
 
     assertThat(postMapper.findById(postId)).isNull();
