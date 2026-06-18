@@ -17,6 +17,8 @@ public interface UserMapper {
 
   boolean existsActiveById(Long userId);
 
+  Long findFollowerCountByUserId(Long userId);
+
   int updateProfile(User user);
 
   int withdraw(User user);

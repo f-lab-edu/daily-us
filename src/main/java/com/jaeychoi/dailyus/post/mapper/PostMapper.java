@@ -47,7 +47,17 @@ public interface PostMapper {
 
   long countActiveByUserId(Long userId);
 
+  List<Long> findHotFeedAuthorIds(Long userId, Long hotAuthorThreshold);
+
   List<PostFeedRow> findFeedPosts(Long userId, Long size, LocalDateTime createdAt, Long postId);
+
+  List<PostFeedRow> findNormalFeedPosts(
+      Long userId,
+      Long hotAuthorThreshold,
+      Long size,
+      LocalDateTime createdAt,
+      Long postId
+  );
 
   List<PostFeedRow> findRecentFeedPosts(Long size, LocalDateTime createdAt, Long postId);
 

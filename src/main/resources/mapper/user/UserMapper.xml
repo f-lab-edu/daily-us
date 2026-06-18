@@ -81,6 +81,13 @@
       )
     </select>
 
+    <select id="findFollowerCountByUserId" parameterType="long" resultType="long">
+      SELECT follower_count
+      FROM users
+      WHERE user_id = #{userId}
+        AND deleted_at IS NULL
+    </select>
+
     <update id="incrementFollowerCount" parameterType="long">
       UPDATE users
       SET follower_count = follower_count + 1

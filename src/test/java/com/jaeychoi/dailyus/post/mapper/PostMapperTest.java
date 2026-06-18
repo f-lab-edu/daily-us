@@ -273,6 +273,54 @@ class PostMapperTest {
   }
 
   @Test
+  void findHotFeedAuthorIdsReturnsOnlyRelatedAuthorsOverThreshold() throws Exception {
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long hotFolloweeId = insertUser(uniqueEmail("hot-followee"), uniqueNickname("hot-followee"));
+    Long normalFolloweeId = insertUser(uniqueEmail("normal-followee"),
+        uniqueNickname("normal-followee"));
+    Long outsiderId = insertUser(uniqueEmail("outsider"), uniqueNickname("outsider"));
+    insertFollow(loginUserId, hotFolloweeId);
+    insertFollow(loginUserId, normalFolloweeId);
+    updateFollowerCount(hotFolloweeId, 10000L);
+    updateFollowerCount(normalFolloweeId, 9999L);
+    updateFollowerCount(outsiderId, 10000L);
+
+    List<Long> authorIds = postMapper.findHotFeedAuthorIds(loginUserId, 10000L);
+
+    assertThat(authorIds)
+        .containsExactly(hotFolloweeId)
+        .doesNotContain(normalFolloweeId, outsiderId);
+  }
+
+  @Test
+  void findNormalFeedPostsExcludesHotAuthorsOverThreshold() throws Exception {
+    Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
+    Long hotFolloweeId = insertUser(uniqueEmail("hot-followee"), uniqueNickname("hot-followee"));
+    Long normalFolloweeId = insertUser(uniqueEmail("normal-followee"),
+        uniqueNickname("normal-followee"));
+    insertFollow(loginUserId, hotFolloweeId);
+    insertFollow(loginUserId, normalFolloweeId);
+    updateFollowerCount(hotFolloweeId, 10000L);
+    updateFollowerCount(normalFolloweeId, 9999L);
+    Long hotPostId = insertPost(hotFolloweeId, "hot followee post");
+    Long normalPostId = insertPost(normalFolloweeId, "normal followee post");
+    updatePostCreatedAt(hotPostId, LocalDateTime.of(2026, 4, 6, 10, 0));
+    updatePostCreatedAt(normalPostId, LocalDateTime.of(2026, 4, 6, 9, 0));
+
+    List<PostFeedRow> rows = postMapper.findNormalFeedPosts(
+        loginUserId,
+        10000L,
+        10L,
+        null,
+        null
+    );
+
+    assertThat(rows).extracting(PostFeedRow::postId)
+        .containsExactly(normalPostId)
+        .doesNotContain(hotPostId);
+  }
+
+  @Test
   void existsFeedPostsReturnsTrueWhenRelatedUsersHavePosts() throws Exception {
     Long loginUserId = insertUser(uniqueEmail("login"), uniqueNickname("login"));
     Long followeeId = insertUser(uniqueEmail("followee"), uniqueNickname("followee"));
@@ -543,6 +591,17 @@ class PostMapperTest {
         )) {
       statement.setLong(1, followerId);
       statement.setLong(2, followeeId);
+      statement.executeUpdate();
+    }
+  }
+
+  private void updateFollowerCount(Long userId, Long followerCount) throws Exception {
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement statement = connection.prepareStatement(
+            "UPDATE users SET follower_count = ? WHERE user_id = ?"
+        )) {
+      statement.setLong(1, followerCount);
+      statement.setLong(2, userId);
       statement.executeUpdate();
     }
   }
