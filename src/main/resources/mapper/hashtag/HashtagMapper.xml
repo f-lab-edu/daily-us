@@ -22,10 +22,22 @@
     </select>
 
     <insert id="insert"
+            databaseId="mysql"
             parameterType="com.jaeychoi.dailyus.hashtag.domain.Hashtag"
             useGeneratedKeys="true"
             keyProperty="hashtagId">
         INSERT INTO hashtag (name)
+        VALUES (#{name})
+        ON DUPLICATE KEY UPDATE hashtag_id = LAST_INSERT_ID(hashtag_id)
+    </insert>
+
+    <insert id="insert"
+            databaseId="h2"
+            parameterType="com.jaeychoi.dailyus.hashtag.domain.Hashtag"
+            useGeneratedKeys="true"
+            keyProperty="hashtagId">
+        MERGE INTO hashtag (name)
+        KEY (name)
         VALUES (#{name})
     </insert>
 
